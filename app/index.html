@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#0f1117">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="KeuanganKu">
+  <link rel="manifest" href="manifest.json">
+  <title>KeuanganKu — Input Laporan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+  <link rel="stylesheet" href="./css/style.css?v=1775118238">
+</head>
+<body>
+
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a class="logo" href="#">
+        <div class="logo-icon">KK</div>
+        <div>
+          <div class="logo-text">KeuanganKu</div>
+          <div class="logo-sub">Laporan Keuangan</div>
+        </div>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">Utama</div>
+      <div class="nav-item active" onclick="showPanel('input')">
+        Input Transaksi
+        <span class="nav-badge" id="badge-queue" style="display:none">0</span>
+      </div>
+      <div class="nav-item saldo-panel-link" onclick="showPanel('saldo')">
+        Saldo &amp; Ringkasan
+      </div>
+      <div class="nav-item" onclick="showPanel('history')">
+        Riwayat Lokal
+      </div>
+      <div class="nav-section">Sistem</div>
+      <div class="nav-item" onclick="showPanel('settings')">
+        Pengaturan
+      </div>
+      <div class="nav-item" onclick="showPanel('about')">
+        Panduan
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sheets-status" id="sheets-status">
+        <div class="status-dot" id="status-dot"></div>
+        <div class="status-text">
+          <div class="status-label">Google Sheets</div>
+          <div class="status-value" id="status-value">Belum terhubung</div>
+        </div>
+        <span id="status-icon" style="font-size:11px;color:var(--text3);font-weight:600">OK</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main" id="main-content">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+      <span class="topbar-title" id="topbar-title">Input Transaksi</span>
+      <div class="topbar-actions">
+        <button class="btn-topbar" onclick="exportCSV()">Export CSV</button>
+        <button class="btn-topbar" onclick="showPanel('settings')">Pengaturan</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="install-banner" id="install-banner" style="display:none">
+        <div class="install-banner-text">
+          <div>Install sebagai aplikasi</div>
+          <div class="install-banner-sub">Akses lebih cepat dari home screen</div>
+        </div>
+        <button class="btn-install" id="btn-install">Install</button>
+      </div>
+
+      <div class="panel active" id="panel-input"></div>
+      <div class="panel" id="panel-saldo"></div>
+      <div class="panel" id="panel-history"></div>
+      <div class="panel" id="panel-settings"></div>
+      <div class="panel" id="panel-about"></div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="./js/db.js?v=1775118238"></script>
+<script src="./js/api.js?v=1775118238"></script>
+<script src="./js/saldo.js?v=1775118238"></script>
+<script src="./js/ui.js?v=1775118238"></script>
+<script src="./js/auth.js?v=1775118238"></script>
+
+<script>
+  async function loadComponents() {
+    const panels = [
+      { id: 'panel-input',    src: './components/panel-input.html' },
+      { id: 'panel-saldo',    src: './components/panel-saldo.html' },
+      { id: 'panel-history',  src: './components/panel-history.html' },
+      { id: 'panel-settings', src: './components/panel-settings.html' },
+      { id: 'panel-about',    src: './components/panel-about.html' },
+    ];
+    await Promise.all(panels.map(async ({ id, src }) => {
+      try {
+        const res  = await fetch(src);
+        const html = await res.text();
+        document.getElementById(id).innerHTML = html;
+      } catch (err) {
+        console.warn('Gagal memuat komponen:', src, err);
+      }
+    }));
+    if (typeof initApp  === 'function') initApp();
+    if (typeof initAuth === 'function') initAuth();
+  }
+  loadComponents();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+</script>
+</body>
+</html>

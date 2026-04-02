@@ -1,0 +1,46 @@
+<div class="form-header">
+  <h1>Saldo &amp; Ringkasan</h1>
+  <p>Data real-time dari Google Sheets Anda</p>
+</div>
+
+<!-- Hero: Total Saldo Bersih -->
+<div class="saldo-hero">
+  <div class="saldo-hero-label">Total Saldo Bersih</div>
+  <div class="saldo-hero-amount" id="saldo-total">—</div>
+  <div class="saldo-hero-sub" id="saldo-periode">Memuat data...</div>
+  <button class="saldo-refresh-btn" id="saldo-refresh-btn" onclick="refreshSaldo()">
+    <div class="spin-sm"></div>
+    <span>🔄 Refresh</span>
+  </button>
+  <div class="saldo-last-update" id="saldo-last-update"></div>
+</div>
+
+<!-- Ringkasan: Masuk / Keluar / Selisih -->
+<div class="saldo-summary">
+  <div class="saldo-sum-card">
+    <div class="label">Total Masuk</div>
+    <div class="value masuk-color" id="saldo-masuk">—</div>
+    <div class="sub" id="saldo-masuk-count">— transaksi</div>
+  </div>
+  <div class="saldo-sum-card">
+    <div class="label">Total Keluar</div>
+    <div class="value keluar-color" id="saldo-keluar">—</div>
+    <div class="sub" id="saldo-keluar-count">— transaksi</div>
+  </div>
+  <div class="saldo-sum-card">
+    <div class="label">Total Transaksi</div>
+    <div class="value" style="color:var(--text)" id="saldo-txn-total">—</div>
+    <div class="sub" id="saldo-sheet-name">—</div>
+  </div>
+</div>
+
+<!-- Per Sumber Uang -->
+<div class="form-card saldo-sumber-section">
+  <div class="saldo-sumber-title">Saldo per Sumber Uang</div>
+  <div class="saldo-sumber-list" id="saldo-sumber-list">
+    <div class="saldo-error">
+      <div class="saldo-error-icon">📊</div>
+      <p>Klik <strong>Refresh</strong> untuk memuat<br>saldo dari Google Sheets Anda.</p>
+    </div>
+  </div>
+</div>

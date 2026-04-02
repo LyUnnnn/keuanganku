@@ -1,0 +1,45 @@
+<!-- ─── Sidebar ─── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a class="logo" href="#">
+        <div class="logo-icon">💰</div>
+        <div>
+          <div class="logo-text">KeuanganKu</div>
+          <div class="logo-sub">Laporan Keuangan</div>
+        </div>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">Utama</div>
+      <div class="nav-item active" onclick="showPanel('input')">
+        <span class="nav-icon">✏️</span>
+        Input Transaksi
+        <span class="nav-badge" id="badge-queue" style="display:none">0</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('history')">
+        <span class="nav-icon">📋</span>
+        Riwayat Lokal
+      </div>
+      <div class="nav-section">Koneksi</div>
+      <div class="nav-item" onclick="showPanel('settings')" id="nav-settings">
+        <span class="nav-icon">⚙️</span>
+        Pengaturan
+      </div>
+      <div class="nav-item" onclick="showPanel('about')">
+        <span class="nav-icon">ℹ️</span>
+        Panduan
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sheets-status" id="sheets-status">
+        <div class="status-dot" id="status-dot"></div>
+        <div class="status-text">
+          <div class="status-label">Google Sheets</div>
+          <div class="status-value" id="status-value">Belum terhubung</div>
+        </div>
+        <span id="status-icon" style="font-size:14px">🔗</span>
+      </div>
+    </div>
+  </aside>

@@ -1,0 +1,15 @@
+<div class="form-header">
+  <h1>Riwayat Lokal</h1>
+  <p>Data yang sudah diinput di perangkat ini</p>
+</div>
+
+<div class="stats-grid" id="stats-grid"></div>
+
+<div class="history-filters">
+  <div class="filter-chip active" data-filter="all"    onclick="filterHistory('all',this)">Semua</div>
+  <div class="filter-chip"       data-filter="Masuk"  onclick="filterHistory('Masuk',this)">Masuk</div>
+  <div class="filter-chip"       data-filter="Keluar" onclick="filterHistory('Keluar',this)">Keluar</div>
+  <div class="filter-chip"       data-filter="Netral" onclick="filterHistory('Netral',this)">Netral</div>
+</div>
+
+<div id="history-container"></div>

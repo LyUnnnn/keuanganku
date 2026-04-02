@@ -1,0 +1,33 @@
+services:
+  # ─── Static Frontend (Nginx) ───────────────────────────
+  keuanganku:
+    image: nginx:alpine
+    container_name: keuanganku
+    restart: unless-stopped
+    volumes:
+      - ./app:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "85:80"
+    depends_on:
+      - keuanganku-api
+    networks:
+      - keuanganku-net
+
+  # ─── Backend API (Node.js) ─────────────────────────────
+  keuanganku-api:
+    build: ./backend
+    container_name: keuanganku-api
+    restart: unless-stopped
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      - ./data:/data
+    networks:
+      - keuanganku-net
+    expose:
+      - "3001"
+
+networks:
+  keuanganku-net:
+    driver: bridge

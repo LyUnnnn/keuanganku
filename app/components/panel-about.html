@@ -1,0 +1,49 @@
+<div class="form-header">
+  <h1>Panduan Penggunaan</h1>
+  <p>Cara setup dan menggunakan KeuanganKu</p>
+</div>
+
+<div class="form-card" style="margin-bottom:16px">
+  <div class="settings-title">Alur Penggunaan</div>
+  <div style="font-size:14px;color:var(--text2);line-height:1.9">
+    <p>① <strong style="color:var(--text)">Setup sekali</strong> — Masukkan URL Apps Script di halaman Pengaturan</p>
+    <p>② <strong style="color:var(--text)">Input transaksi</strong> — Pilih jenis, isi form, klik Kirim</p>
+    <p>③ <strong style="color:var(--text)">Data langsung masuk</strong> ke Google Sheets Anda secara real-time</p>
+    <p>④ <strong style="color:var(--text)">Lihat Saldo</strong> di panel Saldo &amp; Ringkasan untuk monitor keuangan</p>
+    <p>⑤ <strong style="color:var(--text)">Install sebagai PWA</strong> untuk akses lebih cepat dari home screen</p>
+  </div>
+</div>
+
+<div class="form-card" style="margin-bottom:16px">
+  <div class="settings-title">Kolom di Google Sheets</div>
+  <div style="font-size:13px;color:var(--text2);line-height:1.9">
+    <p>A — Timestamp (otomatis)</p>
+    <p>B — Tanggal Input</p>
+    <p>C — Deskripsi</p>
+    <p>D — Kategori</p>
+    <p>E — Jenis (Masuk/Keluar/Netral)</p>
+    <p>F — Nominal</p>
+    <p>G — Sumber Uang</p>
+    <p>H — Kelompok Kategori</p>
+  </div>
+</div>
+
+<div class="form-card" style="margin-bottom:16px">
+  <div class="settings-title">Panel Saldo — Cara Kerja</div>
+  <div style="font-size:13px;color:var(--text2);line-height:1.9">
+    <p>• Panel Saldo membaca langsung dari Google Sheets via Apps Script</p>
+    <p>• Pastikan fungsi <code style="font-family:var(--mono);font-size:11px;background:var(--bg3);padding:1px 5px;border-radius:4px">doGet</code> mendukung parameter <code style="font-family:var(--mono);font-size:11px;background:var(--bg3);padding:1px 5px;border-radius:4px">?action=saldo</code></p>
+    <p>• Gunakan kode Apps Script versi terbaru dari halaman Pengaturan</p>
+    <p>• Data diperbarui setiap kali klik tombol Refresh</p>
+  </div>
+</div>
+
+<div class="form-card">
+  <div class="settings-title">Tips Kecepatan</div>
+  <div style="font-size:13px;color:var(--text2);line-height:1.9">
+    <p>• Klik jenis transaksi (Masuk/Keluar/Netral) terlebih dahulu</p>
+    <p>• Kategori akan otomatis mengisi Kelompok Kategori</p>
+    <p>• Data tersimpan lokal jika koneksi terputus</p>
+    <p>• Export CSV tersedia lewat tombol 📤 di atas</p>
+  </div>
+</div>

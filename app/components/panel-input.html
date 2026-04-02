@@ -1,0 +1,121 @@
+<div class="form-header">
+  <h1>Tambah Transaksi</h1>
+  <p>Isi data transaksi lalu kirim ke Google Sheets</p>
+</div>
+
+<!-- Timestamp -->
+<div class="timestamp-row">
+  <span class="timestamp-label">Timestamp Otomatis</span>
+  <span class="timestamp-val" id="timestamp-display">—</span>
+</div>
+
+<!-- Jenis -->
+<div class="jenis-selector" id="jenis-selector">
+  <button class="jenis-btn" data-val="Masuk" onclick="selectJenis('Masuk',this)">
+    <span class="jenis-icon">+</span>Masuk
+  </button>
+  <button class="jenis-btn" data-val="Keluar" onclick="selectJenis('Keluar',this)">
+    <span class="jenis-icon">-</span>Keluar
+  </button>
+  <button class="jenis-btn" data-val="Netral" onclick="selectJenis('Netral',this)">
+    <span class="jenis-icon">=</span>Netral
+  </button>
+</div>
+
+<form id="form-transaksi" onsubmit="submitForm(event)">
+  <div class="form-card">
+    <div class="form-grid">
+
+      <div class="form-group">
+        <label class="field-required" for="tanggal">Tanggal Input</label>
+        <input type="date" id="tanggal" required>
+      </div>
+
+      <div class="form-group">
+        <label class="field-required" for="nominal">Nominal</label>
+        <div class="nominal-wrap">
+          <span class="nominal-prefix">Rp</span>
+          <input type="number" id="nominal" placeholder="0" min="0" required oninput="updateNominalDisplay(this)">
+        </div>
+        <div class="nominal-display" id="nominal-display"></div>
+      </div>
+
+      <div class="form-group full">
+        <label class="field-required" for="deskripsi">Deskripsi</label>
+        <textarea id="deskripsi" placeholder="Contoh: Makan siang di warteg, Gaji bulan Januari..." required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="field-required" for="kategori">Kategori</label>
+        <select id="kategori" required onchange="updateKelompok(this.value)">
+          <option value="">— Pilih Kategori —</option>
+          <optgroup label="Pemasukan">
+            <option value="Gaji">Gaji</option>
+            <option value="Pendapatan Usaha">Pendapatan Usaha</option>
+            <option value="Pemberian">Pemberian</option>
+            <option value="Bunga &amp; Investasi">Bunga &amp; Investasi</option>
+          </optgroup>
+          <optgroup label="Pengeluaran Rutin">
+            <option value="Makan &amp; Minum">Makan &amp; Minum</option>
+            <option value="Transportasi">Transportasi</option>
+            <option value="Utilitas">Utilitas</option>
+            <option value="Tempat Tinggal">Tempat Tinggal</option>
+            <option value="Cicilan / Hutang">Cicilan / Hutang</option>
+          </optgroup>
+          <optgroup label="Pengeluaran Variabel">
+            <option value="Pengeluaran Variabel">Pengeluaran Variabel</option>
+            <option value="Kesehatan">Kesehatan</option>
+            <option value="Kebersihan">Kebersihan</option>
+            <option value="Belanja">Belanja</option>
+            <option value="Kebutuhan Digital">Kebutuhan Digital</option>
+            <option value="Pendidikan">Pendidikan</option>
+            <option value="Sosial &amp; Donasi">Sosial &amp; Donasi</option>
+            <option value="Biaya Admin &amp; Pajak">Biaya Admin &amp; Pajak</option>
+            <option value="Lain-lain">Lain-lain</option>
+          </optgroup>
+          <optgroup label="Non-Pengeluaran">
+            <option value="Transfer Antar Akun">Transfer Antar Akun</option>
+            <option value="Piutang">Piutang</option>
+            <option value="Investasi">Investasi</option>
+            <option value="Penyesuaian Saldo">Penyesuaian Saldo</option>
+            <option value="Set Saldo">Set Saldo</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="kelompok">Kelompok Kategori</label>
+        <select id="kelompok">
+          <option value="">— Otomatis terisi —</option>
+          <option value="Pemasukan">Pemasukan</option>
+          <option value="Pengeluaran Rutin">Pengeluaran Rutin</option>
+          <option value="Pengeluaran Variabel">Pengeluaran Variabel</option>
+          <option value="Non-Pengeluaran">Non-Pengeluaran</option>
+        </select>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Sumber Uang -->
+  <div class="form-card">
+    <label style="display:block;margin-bottom:12px" class="field-required">Sumber Uang</label>
+    <div class="sumber-grid" id="sumber-grid">
+      <div class="sumber-pill" data-val="BCA"       onclick="selectSumber('BCA',this)">BCA</div>
+      <div class="sumber-pill" data-val="Cash"      onclick="selectSumber('Cash',this)">Cash</div>
+      <div class="sumber-pill" data-val="OVO"       onclick="selectSumber('OVO',this)">OVO</div>
+      <div class="sumber-pill" data-val="Gopay"     onclick="selectSumber('Gopay',this)">Gopay</div>
+      <div class="sumber-pill" data-val="Dana"      onclick="selectSumber('Dana',this)">Dana</div>
+      <div class="sumber-pill" data-val="Shopeepay" onclick="selectSumber('Shopeepay',this)">ShopeePay</div>
+    </div>
+    <input type="hidden" id="sumber" required>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn-submit" id="btn-submit">
+      <div class="spinner"></div>
+      <span class="btn-text">Kirim ke Google Sheets</span>
+    </button>
+    <button type="button" class="btn-reset" onclick="resetForm()">Reset</button>
+  </div>
+</form>
