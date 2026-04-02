@@ -45,5 +45,5 @@ Pastikan Anda sudah menginstal Docker dan Docker Compose di server Anda.
 
 **1. Clone Repository**
 ```bash
-git clone [https://github.com/username/keuanganku.git](https://github.com/LyUnnnn/keuanganku.git)
+git clone https://github.com/LyUnnnn/keuanganku.git
 cd keuanganku
