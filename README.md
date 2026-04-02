@@ -1,6 +1,14 @@
-# KeuanganKu
+<div align="center">
+  <h1>KeuanganKu</h1>
+  <p><b>Aplikasi Pencatat Keuangan (PWA) dengan Arsitektur Offline-First & Google Sheets Backend.</b></p>
 
-Aplikasi Pencatat Keuangan (PWA) dengan Arsitektur Offline-First & Google Sheets Backend.
+  <img src="https://img.shields.io/badge/PWA-Ready-success?style=flat-square&logo=pwa" alt="PWA Ready" />
+  <img src="https://img.shields.io/badge/Node.js-Backend-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/Docker-Containerized-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/Database-Google_Sheets-34A853?style=flat-square&logo=googlesheets&logoColor=white" alt="Google Sheets" />
+</div>
+
+<br />
 
 KeuanganKu bukan sekadar form HTML biasa. Ini adalah aplikasi *Progressive Web App* (PWA) yang dibangun dengan arsitektur *software engineering* modern untuk menyelesaikan masalah pencatatan keuangan pribadi dengan cepat, aman, dan tanpa biaya server *database*.
 
@@ -37,4 +45,5 @@ Pastikan Anda sudah menginstal Docker dan Docker Compose di server Anda.
 
 **1. Clone Repository**
 ```bash
-git clone https://github.com/LyUnnnn/keuanganku.git
+git clone [https://github.com/username/keuanganku.git](https://github.com/LyUnnnn/keuanganku.git)
+cd keuanganku
