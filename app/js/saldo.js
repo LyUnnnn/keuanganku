@@ -8,7 +8,7 @@
 
 const SUMBER_EMOJI = {
   BCA: '🏦', Cash: '💵', OVO: '💜',
-  Gopay: '💚', Dana: '🔵', Shopeepay: '🧡',
+  GOPAY: '💚', DANA: '🔵', ShopeePay: '🧡',
 };
 
 function getSumberEmoji(nama) {
