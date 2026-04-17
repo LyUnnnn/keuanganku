@@ -58,7 +58,7 @@ function getDefaultConfig() {
 }
 
 // ─── Hash PIN (SHA-256 + salt tetap) ─────────────────────
-const SALT = 'keuanganku-2025-salt';
+const SALT = process.env.PIN_SALT || 'salt-default-sementara';
 function hashPin(pin) {
   return crypto.createHash('sha256').update(SALT + pin).digest('hex');
 }
