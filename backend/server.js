@@ -18,12 +18,27 @@ const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 // ─── Middleware ────────────────────────────────────────────
 app.use(express.json());
 
-// CORS — hanya izinkan dari origin yang sama (Nginx)
+// ─── CORS — Strict origin whitelist ──────────────
+function getCorsOrigin() {
+  if (process.env.MY_DOMAIN) return `https://${process.env.MY_DOMAIN}`;
+  // Development only
+  return process.env.NODE_ENV === 'production' ? null : 'http://localhost';
+}
+
 app.use((req, res, next) => {
-  // Dalam produksi Nginx, request datang dari localhost
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigin = getCorsOrigin();
+  const origin = req.headers.origin;
+  
+  // Strict: only allow exact origin match
+  if (origin === allowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -372,9 +387,31 @@ app.get('/api/settings', requireAuth(), (req, res) => {
   res.json({ status: 'ok', data: cfg.settings });
 });
 
+// ─── URL Validation Helper ────────────────────────────────
+function isValidGoogleAppsScriptUrl(url) {
+  if (!url) return true; // Empty is OK (not required)
+  try {
+    const urlObj = new URL(url);
+    if (urlObj.protocol !== 'https:') return false;
+    // Must be Apps Script URL
+    return /^script\.google\.com$/.test(urlObj.hostname) && 
+           /^\/macros\/d\/[a-zA-Z0-9_-]+\/useweb\/?/.test(urlObj.pathname);
+  } catch {
+    return false;
+  }
+}
+
 // ─── POST /api/settings — simpan settings (admin only) ────
 app.post('/api/settings', requireAuth(['admin']), (req, res) => {
   const { scriptUrl, sheetName } = req.body;
+
+  // Validate Google Apps Script URL
+  if (scriptUrl !== undefined && scriptUrl && !isValidGoogleAppsScriptUrl(scriptUrl)) {
+    return res.status(400).json({ 
+      status: 'error', 
+      message: 'URL harus Apps Script Google yang valid (https://script.google.com/macros/d/[ID]/useweb). URL lainnya tidak diizinkan.' 
+    });
+  }
 
   const cfg = readConfig();
   if (scriptUrl !== undefined) cfg.settings.scriptUrl = scriptUrl;

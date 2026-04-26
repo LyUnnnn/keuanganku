@@ -9,6 +9,7 @@ npm-debug.log
 /data/
 /backend/data/
 config.json
+/note_do_not_upload
 
 # OS files
 .DS_Store

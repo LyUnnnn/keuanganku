@@ -10,11 +10,18 @@ async function sendItemToSheets(item, db) {
   Object.entries(item).forEach(([k, v]) => formData.append(k, v));
   formData.append('sheetName', settings.sheetName || 'Transaksi');
 
-  await fetch(settings.scriptUrl, {
+  // Better error detection with mode: 'cors'
+  const response = await fetch(settings.scriptUrl, {
     method: 'POST',
     body: formData,
-    mode: 'no-cors',
+    mode: 'cors',
+    credentials: 'omit', // Don't send cookies to untrusted endpoint
   });
+
+  if (!response.ok && response.status !== 0) {
+    // Status 0 happens with Google Script (CORS response handling)
+    throw new Error(`Server responded with status ${response.status}`);
+  }
 
   // Tandai terkirim & update DB
   item.sent = true;
