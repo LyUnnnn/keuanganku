@@ -33,7 +33,7 @@ function readConfig() {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     if (!fs.existsSync(CONFIG_FILE)) return getDefaultConfig();
-    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    return ensureConfigShape(JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')));
   } catch {
     return getDefaultConfig();
   }
@@ -41,7 +41,18 @@ function readConfig() {
 
 function writeConfig(cfg) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(ensureConfigShape(cfg), null, 2));
+}
+
+function ensureConfigShape(cfg) {
+  const base = getDefaultConfig();
+  return {
+    ...base,
+    ...cfg,
+    pins: { ...base.pins, ...(cfg?.pins || {}) },
+    settings: { ...base.settings, ...(cfg?.settings || {}) },
+    auth: { ...base.auth, ...(cfg?.auth || {}) },
+  };
 }
 
 function getDefaultConfig() {
@@ -54,6 +65,9 @@ function getDefaultConfig() {
       scriptUrl: '',
       sheetName: 'Transaksi',
     },
+    auth: {
+      tokenVersion: 0,
+    },
     initialized: false,
   };
 }
@@ -65,8 +79,25 @@ function hashPin(pin) {
 }
 
 // ─── JWT sederhana (tanpa library external) ───────────────
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 const JWT_TTL_MS = 24 * 60 * 60 * 1000;
+const JWT_SECRET_FILE = path.join(DATA_DIR, 'jwt.secret');
+
+function getJwtSecret() {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  try {
+    if (fs.existsSync(JWT_SECRET_FILE)) {
+      const secret = fs.readFileSync(JWT_SECRET_FILE, 'utf8').trim();
+      if (secret) return secret;
+    }
+    const secret = crypto.randomBytes(32).toString('hex');
+    fs.writeFileSync(JWT_SECRET_FILE, secret, { mode: 0o600 });
+    return secret;
+  } catch {
+    return crypto.randomBytes(32).toString('hex');
+  }
+}
+
+const JWT_SECRET = getJwtSecret();
 
 function parseCookies(cookieHeader = '') {
   return cookieHeader.split(';').reduce((acc, part) => {
@@ -104,6 +135,10 @@ function clearAuthCookie(req, res) {
   res.cookie('keuanganku_token', '', cookieOptions(req, 0));
 }
 
+function clearLegacyCookies(req, res) {
+  res.cookie('keuanganku_csrf', '', cookieOptions(req, 0));
+}
+
 function signToken(payload) {
   const header  = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const body    = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() })).toString('base64url');
@@ -134,6 +169,10 @@ function requireAuth(roles = []) {
       : (parseCookies(req.headers.cookie || '').keuanganku_token || '');
     const payload = verifyToken(token);
     if (!payload) return res.status(401).json({ status: 'error', message: 'Token tidak valid atau expired' });
+    const cfg = readConfig();
+    if (Number(payload.version || 0) !== getAuthTokenVersion(cfg)) {
+      return res.status(401).json({ status: 'error', message: 'Token tidak valid atau expired' });
+    }
     if (roles.length && !roles.includes(payload.mode)) {
       return res.status(403).json({ status: 'error', message: 'Akses ditolak untuk mode ini' });
     }
@@ -189,13 +228,33 @@ function authDelay(state) {
 function authFailureResponse(res, state, message) {
   if (state.lockedUntil && state.lockedUntil > Date.now()) {
     const remaining = Math.ceil((state.lockedUntil - Date.now()) / 1000);
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    const waitText = minutes > 0
+      ? `${minutes} menit${seconds > 0 ? ` ${seconds} detik` : ''}`
+      : `${remaining} detik`;
     return res.status(429).json({
       status: 'error',
-      message: `Terlalu banyak percobaan. Coba lagi dalam ${remaining} detik.`,
+      message: `Terlalu banyak percobaan. Coba lagi dalam ${waitText}.`,
       locked: true,
     });
   }
   return res.status(401).json({ status: 'error', message });
+}
+
+function getAuthTokenVersion(cfg) {
+  return Number(cfg?.auth?.tokenVersion || 0);
+}
+
+function bumpAuthTokenVersion(cfg) {
+  const next = {
+    ...ensureConfigShape(cfg),
+    auth: {
+      tokenVersion: getAuthTokenVersion(cfg) + 1,
+    },
+  };
+  writeConfig(next);
+  return next.auth.tokenVersion;
 }
 // ═══════════════════════════════════════════════════════════
 
@@ -239,7 +298,7 @@ app.post('/api/setup', (req, res) => {
   cfg.pins.admin   = hashPin(adminPin);
   if (userPin) cfg.pins.user = hashPin(userPin);
   cfg.initialized  = true;
-  writeConfig(cfg);
+  bumpAuthTokenVersion(cfg);
 
   res.json({ status: 'ok', message: 'PIN berhasil disimpan' });
 });
@@ -274,8 +333,9 @@ app.post('/api/login', async (req, res) => {
   }
 
   clearAuthFailures(req, `login:${mode}`);
-  const token = signToken({ mode, version: 1 });
+  const token = signToken({ mode, version: getAuthTokenVersion(cfg) });
   setAuthCookie(req, res, token);
+  clearLegacyCookies(req, res);
   res.json({ status: 'ok', mode });
 });
 
@@ -292,14 +352,17 @@ app.post('/api/change-pin', requireAuth(['admin']), (req, res) => {
 
   const cfg = readConfig();
   cfg.pins[mode] = hashPin(newPin);
-  writeConfig(cfg);
+  bumpAuthTokenVersion(cfg);
 
   res.json({ status: 'ok', message: `PIN ${mode} berhasil diubah` });
 });
 
 // â”€â”€â”€ POST /api/logout â€” hapus cookie autentikasi â”€â”€â”€â”€â”€â”€
 app.post('/api/logout', (req, res) => {
+  const cfg = readConfig();
+  bumpAuthTokenVersion(cfg);
   clearAuthCookie(req, res);
+  clearLegacyCookies(req, res);
   res.json({ status: 'ok', message: 'Logout berhasil' });
 });
 

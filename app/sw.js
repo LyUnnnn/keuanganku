@@ -1,5 +1,5 @@
 // ─── sw.js — Service Worker ───────────────────────────────
-const CACHE   = 'keuanganku-v3';
+const CACHE   = 'keuanganku-v4';
 const ASSETS  = [
   './',
   './index.html',
@@ -35,6 +35,13 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+
+  // Route sensitif selalu lewat network
+  if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/api')) {
+    return;
+  }
+
   // Jangan cache POST request (ke Apps Script)
   if (e.request.method === 'POST') return;
 
