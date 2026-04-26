@@ -9,6 +9,7 @@ const path     = require('path');
 
 const app  = express();
 const PORT = 3001;
+app.set('trust proxy', 1);
 
 // ─── Path ke file konfigurasi (di Docker volume) ──────────
 const DATA_DIR   = '/data';
@@ -65,6 +66,43 @@ function hashPin(pin) {
 
 // ─── JWT sederhana (tanpa library external) ───────────────
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const JWT_TTL_MS = 24 * 60 * 60 * 1000;
+
+function parseCookies(cookieHeader = '') {
+  return cookieHeader.split(';').reduce((acc, part) => {
+    const chunk = part.trim();
+    if (!chunk) return acc;
+    const idx = chunk.indexOf('=');
+    const key = idx >= 0 ? chunk.slice(0, idx) : chunk;
+    const value = idx >= 0 ? chunk.slice(idx + 1) : '';
+    acc[decodeURIComponent(key)] = decodeURIComponent(value || '');
+    return acc;
+  }, {});
+}
+
+function isSecureRequest(req) {
+  if (req.secure) return true;
+  const forwardedProto = (req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  return forwardedProto === 'https';
+}
+
+function cookieOptions(req, maxAge = JWT_TTL_MS) {
+  return {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: isSecureRequest(req),
+    path: '/',
+    maxAge,
+  };
+}
+
+function setAuthCookie(req, res, token) {
+  res.cookie('keuanganku_token', token, cookieOptions(req));
+}
+
+function clearAuthCookie(req, res) {
+  res.cookie('keuanganku_token', '', cookieOptions(req, 0));
+}
 
 function signToken(payload) {
   const header  = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -91,7 +129,9 @@ function verifyToken(token) {
 function requireAuth(roles = []) {
   return (req, res, next) => {
     const auth  = req.headers.authorization || '';
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    const token = auth.startsWith('Bearer ')
+      ? auth.slice(7)
+      : (parseCookies(req.headers.cookie || '').keuanganku_token || '');
     const payload = verifyToken(token);
     if (!payload) return res.status(401).json({ status: 'error', message: 'Token tidak valid atau expired' });
     if (roles.length && !roles.includes(payload.mode)) {
@@ -104,6 +144,59 @@ function requireAuth(roles = []) {
 
 // ═══════════════════════════════════════════════════════════
 // ROUTES
+
+const authAttempts = new Map();
+const LOGIN_MAX_ATTEMPTS = 5;
+const SETUP_MAX_ATTEMPTS = 3;
+const LOCKOUT_MS = 15 * 60 * 1000;
+const AUTH_DELAY_STEP_MS = 300;
+
+function authKey(req, scope) {
+  return `${scope}:${req.ip || req.socket?.remoteAddress || 'unknown'}`;
+}
+
+function getAuthState(req, scope) {
+  const key = authKey(req, scope);
+  const now = Date.now();
+  const state = authAttempts.get(key) || { fails: 0, lockedUntil: 0, lastFailAt: 0 };
+  if (state.lockedUntil && state.lockedUntil <= now) {
+    state.fails = 0;
+    state.lockedUntil = 0;
+  }
+  authAttempts.set(key, state);
+  return { key, state };
+}
+
+function clearAuthFailures(req, scope) {
+  authAttempts.delete(authKey(req, scope));
+}
+
+function registerAuthFailure(req, scope, limit) {
+  const { key, state } = getAuthState(req, scope);
+  state.fails += 1;
+  state.lastFailAt = Date.now();
+  if (state.fails >= limit) {
+    state.lockedUntil = Date.now() + LOCKOUT_MS;
+  }
+  authAttempts.set(key, state);
+  return state;
+}
+
+function authDelay(state) {
+  return Math.min(2000, state.fails * AUTH_DELAY_STEP_MS);
+}
+
+function authFailureResponse(res, state, message) {
+  if (state.lockedUntil && state.lockedUntil > Date.now()) {
+    const remaining = Math.ceil((state.lockedUntil - Date.now()) / 1000);
+    return res.status(429).json({
+      status: 'error',
+      message: `Terlalu banyak percobaan. Coba lagi dalam ${remaining} detik.`,
+      locked: true,
+    });
+  }
+  return res.status(401).json({ status: 'error', message });
+}
 // ═══════════════════════════════════════════════════════════
 
 // ─── GET /api/status — cek apakah PIN sudah di-setup ──────
@@ -133,7 +226,9 @@ app.post('/api/setup', (req, res) => {
   // Setup hanya bisa dilakukan sekali (jika belum initialized)
   // Atau dengan token admin yang valid
   const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const token = authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : (parseCookies(req.headers.cookie || '').keuanganku_token || '');
   const payload = verifyToken(token);
   const isAdmin = payload && payload.mode === 'admin';
 
@@ -150,7 +245,7 @@ app.post('/api/setup', (req, res) => {
 });
 
 // ─── POST /api/login — login dengan PIN ───────────────────
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { pin, mode } = req.body;
 
   if (!pin || !mode || !['admin', 'user'].includes(mode)) {
@@ -170,11 +265,18 @@ app.post('/api/login', (req, res) => {
   }
 
   if (hashPin(pin) !== stored) {
-    return res.status(401).json({ status: 'error', message: 'PIN salah' });
+    const state = registerAuthFailure(req, `login:${mode}`, LOGIN_MAX_ATTEMPTS);
+    const delay = authDelay(state);
+    if (delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    return authFailureResponse(res, state, 'PIN salah');
   }
 
+  clearAuthFailures(req, `login:${mode}`);
   const token = signToken({ mode, version: 1 });
-  res.json({ status: 'ok', token, mode });
+  setAuthCookie(req, res, token);
+  res.json({ status: 'ok', mode });
 });
 
 // ─── POST /api/change-pin — ganti PIN (admin only) ────────
@@ -193,6 +295,12 @@ app.post('/api/change-pin', requireAuth(['admin']), (req, res) => {
   writeConfig(cfg);
 
   res.json({ status: 'ok', message: `PIN ${mode} berhasil diubah` });
+});
+
+// â”€â”€â”€ POST /api/logout â€” hapus cookie autentikasi â”€â”€â”€â”€â”€â”€
+app.post('/api/logout', (req, res) => {
+  clearAuthCookie(req, res);
+  res.json({ status: 'ok', message: 'Logout berhasil' });
 });
 
 // ─── GET /api/settings — ambil settings ───────────────────

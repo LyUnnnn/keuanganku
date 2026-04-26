@@ -70,10 +70,8 @@ async function saveSettings() {
     // Simpan ke backend (Node.js) — semua device otomatis sinkron
     const res = await fetch('/api/settings', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + authState.token,
-      },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify(newSettings),
     });
     const json = await res.json();

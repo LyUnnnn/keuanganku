@@ -1,8 +1,7 @@
 // ─── auth.js — PIN Authentication via Backend API ─────────
 // PIN & settings disimpan di server (Node.js), bukan localStorage.
-// Token JWT disimpan di sessionStorage (hilang saat browser ditutup).
+// Sesi autentikasi disimpan sebagai cookie HttpOnly di backend.
 
-const AUTH_TOKEN_KEY = 'keuanganku_token';
 const AUTH_MODE_KEY  = 'keuanganku_mode';
 const API_BASE       = '/api';
 
@@ -18,7 +17,7 @@ function isUser()  { return authState.unlocked && authState.mode === 'user'; }
 // ─── API Helpers ──────────────────────────────────────────
 async function apiGet(path) {
   const res = await fetch(API_BASE + path, {
-    headers: authState.token ? { Authorization: 'Bearer ' + authState.token } : {},
+    credentials: 'same-origin',
   });
   return res.json();
 }
@@ -28,44 +27,42 @@ async function apiPost(path, body) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(authState.token ? { Authorization: 'Bearer ' + authState.token } : {}),
     },
+    credentials: 'same-origin',
     body: JSON.stringify(body),
   });
   return res.json();
 }
 
 // ─── Session management ───────────────────────────────────
-function saveSession(token, mode) {
-  sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+function saveSession(mode) {
   sessionStorage.setItem(AUTH_MODE_KEY, mode);
-  authState.token    = token;
   authState.mode     = mode;
   authState.unlocked = true;
+  authState.token    = null;
 }
 
-function clearSession() {
-  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+async function clearSession() {
   sessionStorage.removeItem(AUTH_MODE_KEY);
   authState = { unlocked: false, mode: null, token: null };
+  try {
+    await apiPost('/logout', {});
+  } catch {}
 }
 
 async function restoreSession() {
-  const token = sessionStorage.getItem(AUTH_TOKEN_KEY);
-  const mode  = sessionStorage.getItem(AUTH_MODE_KEY);
-  if (!token || !mode) return false;
-
   try {
-    authState.token = token;
     const res = await apiGet('/verify');
     if (res.status === 'ok') {
       authState.unlocked = true;
-      authState.mode     = mode;
+      authState.mode     = res.mode || sessionStorage.getItem(AUTH_MODE_KEY) || null;
+      authState.token    = null;
+      if (authState.mode) sessionStorage.setItem(AUTH_MODE_KEY, authState.mode);
       return true;
     }
   } catch {}
 
-  clearSession();
+  await clearSession();
   return false;
 }
 
@@ -333,7 +330,7 @@ async function doLogin(mode, pin) {
       setAuthStatus('Akses diberikan!', 'success');
 
       // Load settings dari server sebelum dismiss
-      saveSession(res.token, res.mode);
+      saveSession(res.mode);
 
       try {
         const sRes = await apiGet('/settings');
