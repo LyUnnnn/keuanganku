@@ -33,6 +33,15 @@ const formatRp = n => new Intl.NumberFormat('id-ID', {
   style: 'currency', currency: 'IDR', maximumFractionDigits: 0,
 }).format(n);
 
+function escapeHTML(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ─── Settings — disimpan di backend Node.js ───────────────
 // Settings diambil dari /api/settings saat login (di auth.js).
 // ui.js hanya perlu sync form → server saat save.
@@ -94,7 +103,6 @@ function initApp() {
   setInterval(updateTimestamp, 1000);
   loadSettings();
   checkStatus();
-  renderScriptCode();
   loadHistoryFromDB();
 }
 
@@ -333,13 +341,13 @@ function renderHistory() {
       <div class="history-item">
         <div class="history-dot ${dotCls}"></div>
         <div class="history-body">
-          <div class="history-desc">${h.deskripsi}</div>
-          <div class="history-meta">${h.tanggal} · ${h.kategori}</div>
+          <div class="history-desc">${escapeHTML(h.deskripsi)}</div>
+          <div class="history-meta">${escapeHTML(h.tanggal)} · ${escapeHTML(h.kategori)}</div>
         </div>
         <div class="history-right" style="display:flex;align-items:center;gap:10px">
           <div style="text-align:right">
             <div class="history-nominal ${nomCls}">${sign}${formatRp(h.nominal)}</div>
-            <div class="history-sumber">${h.sumber}</div>
+            <div class="history-sumber">${escapeHTML(h.sumber)}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
             ${actionBtns}
@@ -440,28 +448,6 @@ async function testConnection() {
   }
 }
 
-// ─── PIN Management (from settings panel) ─────────────────
-function changePinAdmin() {
-  if (typeof lockApp === 'function') {
-    // Switch to admin tab and go to setup
-    lockApp();
-    setTimeout(() => {
-      switchAuthTab('admin');
-      startPinSetup();
-    }, 350);
-  }
-}
-
-function changePinUser() {
-  if (typeof lockApp === 'function') {
-    lockApp();
-    setTimeout(() => {
-      switchAuthTab('user');
-      startPinSetup();
-    }, 350);
-  }
-}
-
 // ─── Export CSV ───────────────────────────────────────────
 function exportCSV() {
   if (!localHistory.length) { toast('Tidak ada data', 'info'); return; }
@@ -487,7 +473,10 @@ function exportCSV() {
 function toast(msg, type = 'info') {
   const el     = document.createElement('div');
   el.className = `toast ${type}`;
-  el.innerHTML = `<span class="toast-msg">${msg}</span>`;
+  const span   = document.createElement('span');
+  span.className = 'toast-msg';
+  span.textContent = msg;
+  el.appendChild(span);
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => {
     el.style.opacity    = '0';
@@ -514,169 +503,4 @@ function checkInstallBanner() {
     if (outcome === 'accepted') banner.style.display = 'none';
     deferredPrompt = null;
   };
-}
-
-// ─── Apps Script Code Display ─────────────────────────────
-function renderScriptCode() {
-  const el = document.getElementById('script-code');
-  if (!el) return;
-  el.textContent = `function doPost(e) {
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-
-    // Handle saveSettings action
-    if (e.parameter.action === 'saveSettings') {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      let sheet = ss.getSheetByName('AppSettings');
-      if (!sheet) sheet = ss.insertSheet('AppSettings');
-      const data = JSON.parse(e.parameter.settingsJson || '{}');
-      sheet.clearContents();
-      sheet.appendRow(['key', 'value']);
-      Object.entries(data).forEach(([k, v]) => sheet.appendRow([k, v]));
-      return ContentService.createTextOutput(
-        JSON.stringify({status:'ok'})
-      ).setMimeType(ContentService.MimeType.JSON);
-    }
-
-    const SHEET_NAME = e.parameter.sheetName || 'Transaksi';
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName(SHEET_NAME);
-    if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
-
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(['Timestamp','Tanggal Input','Deskripsi',
-        'Kategori','Jenis','Nominal','Sumber Uang','Kelompok Kategori']);
-      sheet.getRange(1,1,1,8).setFontWeight('bold');
-    }
-
-    const timestampBaru = e.parameter.timestamp;
-    const deskripsiBaru = e.parameter.deskripsi;
-    const dataBaru = [
-      timestampBaru, e.parameter.tanggal, deskripsiBaru,
-      e.parameter.kategori, e.parameter.jenis,
-      parseFloat(e.parameter.nominal) || 0,
-      e.parameter.sumber, e.parameter.kelompok
-    ];
-
-    const lastRow = sheet.getLastRow();
-    let isDuplicate = false;
-    if (lastRow > 1) {
-      const startRow   = Math.max(1, lastRow - 10);
-      // PERBAIKAN 1: Gunakan getDisplayValues() agar format string tidak berubah jadi Object Date
-      const lastValues = sheet.getRange(startRow, 1, lastRow - startRow + 1, 3).getDisplayValues();
-      isDuplicate = lastValues.some(row =>
-        row[0] === timestampBaru && row[2] === deskripsiBaru
-      );
-    }
-
-    if (!isDuplicate) {
-      sheet.appendRow(dataBaru);
-      return ContentService.createTextOutput(
-        JSON.stringify({status:'success',message:'Data berhasil dicatat'})
-      ).setMimeType(ContentService.MimeType.JSON);
-    } else {
-      return ContentService.createTextOutput(
-        JSON.stringify({status:'duplicate',message:'Data sudah ada'})
-      ).setMimeType(ContentService.MimeType.JSON);
-    }
-  } catch(err) {
-    return ContentService.createTextOutput(
-      JSON.stringify({status:'error',message:err.toString()})
-    ).setMimeType(ContentService.MimeType.JSON);
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function doGet(e) {
-  // Ambil settings tersimpan
-  if (e.parameter.action === 'getSettings') {
-    const ss    = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('AppSettings');
-    if (!sheet || sheet.getLastRow() <= 1) {
-      return ContentService.createTextOutput(
-        JSON.stringify({status:'ok', data:{}})
-      ).setMimeType(ContentService.MimeType.JSON);
-    }
-    const rows = sheet.getRange(2, 1, sheet.getLastRow()-1, 2).getValues();
-    const data = {};
-    rows.forEach(r => { if (r[0]) data[r[0]] = r[1]; });
-    return ContentService.createTextOutput(
-      JSON.stringify({status:'ok', data})
-    ).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  // Endpoint saldo
-  if (e.parameter.action === 'saldo') {
-    const SHEET_NAME = e.parameter.sheetName || 'Transaksi';
-    const ss    = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(SHEET_NAME);
-    if (!sheet || sheet.getLastRow() <= 1) {
-      return ContentService.createTextOutput(JSON.stringify({
-        status:'ok',
-        data:{ masuk:0, keluar:0, saldo:0, txnCount:0,
-               masukCount:0, keluarCount:0, perSumber:[] }
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    const rows = sheet.getRange(2, 1, sheet.getLastRow()-1, 8).getValues();
-    
-    // PERBAIKAN 2: Tambahkan tracking khusus untuk netral
-    let masuk=0, keluar=0, netralTotal=0, masukCount=0, keluarCount=0;
-    const sumberMap = {};
-    
-    rows.forEach(r => {
-      const jenis   = r[4];
-      const nominal = parseFloat(r[5]) || 0;
-      const sumber  = r[6] || 'Lainnya';
-      
-      if (!sumberMap[sumber]) sumberMap[sumber]={masuk:0, keluar:0, netral:0, txn:0};
-      sumberMap[sumber].txn++;
-      
-      if (jenis === 'Masuk') {
-          masuk += nominal;
-          masukCount++;
-          sumberMap[sumber].masuk += nominal;
-      } else if (jenis === 'Keluar') {
-        keluar += nominal;
-        keluarCount++;
-        sumberMap[sumber].keluar += nominal;
-      } else if (jenis === 'Netral') {
-        netralTotal += nominal;
-        sumberMap[sumber].netral += nominal;
-      }
-    });
-
-    // Hitung saldo = Masuk - Keluar + Netral (karena Netral udah diset minus dari front-end jika itu pengurang)
-    const perSumber = Object.entries(sumberMap).map(([nama,v])=>({
-      nama, 
-      masuk: v.masuk, 
-      keluar: v.keluar,
-      saldo: v.masuk - v.keluar + v.netral, 
-      txn: v.txn
-    })).sort((a,b) => b.saldo - a.saldo);
-
-    return ContentService.createTextOutput(JSON.stringify({
-      status:'ok',
-      data:{ 
-        masuk, 
-        keluar, 
-        saldo: masuk - keluar + netralTotal,
-        txnCount: rows.length, 
-        masukCount, 
-        keluarCount, 
-        perSumber 
-      }
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  return ContentService.createTextOutput(
-    JSON.stringify({status:'alive'})
-  ).setMimeType(ContentService.MimeType.JSON);
-}`;
-}
-
-function copyScript() {
-  const code = document.getElementById('script-code')?.textContent || '';
-  navigator.clipboard.writeText(code).then(() => toast('Kode berhasil di-copy', 'success'));
 }

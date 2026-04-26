@@ -1,5 +1,5 @@
 // ─── sw.js — Service Worker ───────────────────────────────
-const CACHE   = 'keuanganku-v2';
+const CACHE   = 'keuanganku-v3';
 const ASSETS  = [
   './',
   './index.html',

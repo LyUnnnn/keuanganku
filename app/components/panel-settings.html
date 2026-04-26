@@ -1,4 +1,4 @@
-<div class="form-header">
+﻿<div class="form-header">
   <h1>Pengaturan</h1>
   <p>Konfigurasi koneksi dan keamanan aplikasi</p>
 </div>
@@ -7,17 +7,17 @@
 <div class="form-card">
   <div class="settings-section">
     <div class="settings-title">
-      Google Sheets — Apps Script
-      <span class="settings-sync-badge">Disimpan di server</span>
+      Google Sheets Sync
+      <span class="settings-sync-badge">Disimpan lewat API</span>
     </div>
     <p style="font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.7">
-      Pengaturan disimpan di backend server (Node.js). Semua perangkat yang login akan otomatis mendapat konfigurasi yang sama. Hanya Admin yang dapat mengubah pengaturan.
+      Pengaturan disimpan lewat API backend dan dipakai ulang di semua perangkat yang login. Hanya Admin yang dapat mengubah pengaturan.
     </p>
 
     <div class="settings-row">
       <div>
         <div class="settings-row-label">URL Apps Script</div>
-        <div class="settings-row-sub">Dari Deploy → Web App di Google Apps Script</div>
+        <div class="settings-row-sub">Diisi dari Deploy &rarr; Web App pada Google Apps Script</div>
       </div>
     </div>
     <div style="margin-bottom:16px">
@@ -28,14 +28,14 @@
     <div class="settings-row">
       <div style="flex:1;min-width:0">
         <div class="settings-row-label">Nama Sheet</div>
-        <div class="settings-row-sub">Nama tab di Google Spreadsheet</div>
+        <div class="settings-row-sub">Nama tab pada Google Spreadsheet</div>
       </div>
       <input type="text" class="settings-input" id="sheet-name"
              placeholder="Transaksi" style="width:140px;flex-shrink:0">
     </div>
 
     <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn-save"  onclick="saveSettings()">Simpan ke Server</button>
+      <button class="btn-save" onclick="saveSettings()">Simpan Pengaturan</button>
       <button class="btn-reset" onclick="testConnection()">Test Koneksi</button>
     </div>
   </div>
@@ -53,7 +53,7 @@
     <div class="pin-manage-row">
       <div>
         <div class="pin-manage-label">PIN Admin</div>
-        <div class="pin-manage-sub">Akses penuh — lihat saldo, edit, hapus data</div>
+        <div class="pin-manage-sub">Akses penuh &mdash; lihat saldo, edit, hapus data</div>
       </div>
       <button class="btn-pin-change" onclick="changePinAdmin()">Ganti PIN</button>
     </div>
@@ -61,31 +61,9 @@
     <div class="pin-manage-row">
       <div>
         <div class="pin-manage-label">PIN User</div>
-        <div class="pin-manage-sub">Input transaksi saja — saldo tidak terlihat</div>
+        <div class="pin-manage-sub">Input transaksi saja &mdash; saldo tidak terlihat</div>
       </div>
       <button class="btn-pin-change" onclick="changePinUser()">Ganti PIN</button>
-    </div>
-  </div>
-</div>
-
-<!-- Apps Script Code -->
-<div class="form-card">
-  <div class="settings-section">
-    <div class="settings-title">Kode Apps Script</div>
-    <div style="font-size:13px;color:var(--text2);line-height:1.8">
-      <p style="margin-bottom:8px">1. Buka Google Spreadsheet Anda</p>
-      <p style="margin-bottom:8px">2. Klik <strong style="color:var(--text)">Extensions → Apps Script</strong></p>
-      <p style="margin-bottom:8px">3. Paste kode di bawah, lalu Save</p>
-      <p style="margin-bottom:8px">4. Klik <strong style="color:var(--text)">Deploy → New deployment → Web App</strong></p>
-      <p style="margin-bottom:8px">5. Set <em>Execute as: Me</em> dan <em>Who has access: Anyone</em></p>
-      <p>6. Copy URL deployment ke pengaturan di atas</p>
-    </div>
-    <div style="margin-top:16px;background:var(--bg3);border-radius:var(--radius-sm);padding:16px;border:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">Code.gs</span>
-        <button class="btn-reset" onclick="copyScript()" style="font-size:11px;padding:4px 10px">Copy Kode</button>
-      </div>
-      <pre id="script-code" style="font-family:var(--mono);font-size:11px;color:var(--text2);white-space:pre-wrap;line-height:1.7;overflow-x:auto;word-break:break-all;max-width:100%"></pre>
     </div>
   </div>
 </div>
