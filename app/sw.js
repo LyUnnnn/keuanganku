@@ -1,14 +1,18 @@
 // ─── sw.js — Service Worker ───────────────────────────────
-const CACHE   = 'keuanganku-v4';
+const CACHE   = 'keuanganku-v5';
 const ASSETS  = [
   './',
   './index.html',
   './manifest.json',
+  './favicon.svg',
   './css/style.css',
+  './lib/idb.js',
   './js/db.js',
   './js/api.js',
   './js/saldo.js',
   './js/ui.js',
+  './js/auth.js',
+  './js/init.js',
   './components/panel-input.html',
   './components/panel-saldo.html',
   './components/panel-history.html',
