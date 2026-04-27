@@ -1,15 +1,20 @@
 #!/bin/bash
 
-# Ambil waktu saat ini (contoh: 1712061453)
+# Cache busting: update v=TIMESTAMP di semua file HTML
+# Jalankan script ini SEBELUM build/deploy
+
 TIMESTAMP=$(date +%s)
 
-echo "🔄 Updating cache busting version to: $TIMESTAMP"
+echo "🔄 Cache busting version: $TIMESTAMP"
 
-# Ganti semua parameter v=... di dalam index.html dengan timestamp baru
-sed -i -E "s/v=[0-9\.]+/v=$TIMESTAMP/g" ./app/index.html
+# Update v= parameters di index.html
+sed -i -E "s/v=[0-9]+/v=$TIMESTAMP/g" ./app/index.html
 
-# Update semua inline styles dengan data attributes untuk init.js parsing
-# (Ini buat CSS class yang akan di-apply via JavaScript)
-
-echo "✅ Cache busting updated di app/index.html"
-echo "📝 Next: Run \`npm run build\` or deployment command"
+# Optional: Log untuk verifikasi
+echo "✅ Cache busting selesai!"
+echo "📝 Perubahan di: app/index.html"
+echo ""
+echo "⚠️  PENTING: Jalankan script ini SEBELUM commit/deploy:"
+echo "   ./deploy.sh && git add app/index.html"
+echo ""
+echo "💡 ATAU integrate ke CI/CD pipeline (GitHub Actions, GitLab CI, dll)"
