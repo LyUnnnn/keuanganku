@@ -11,18 +11,18 @@
 
 <!-- Jenis -->
 <div class="jenis-selector" id="jenis-selector">
-  <button class="jenis-btn" data-val="Masuk" onclick="selectJenis('Masuk',this)">
+  <button class="jenis-btn" data-val="Masuk">
     <span class="jenis-icon">+</span>Masuk
   </button>
-  <button class="jenis-btn" data-val="Keluar" onclick="selectJenis('Keluar',this)">
+  <button class="jenis-btn" data-val="Keluar">
     <span class="jenis-icon">-</span>Keluar
   </button>
-  <button class="jenis-btn" data-val="Netral" onclick="selectJenis('Netral',this)">
+  <button class="jenis-btn" data-val="Netral">
     <span class="jenis-icon">=</span>Netral
   </button>
 </div>
 
-<form id="form-transaksi" onsubmit="submitForm(event)">
+<form id="form-transaksi">
   <div class="form-card">
     <div class="form-grid">
 
@@ -35,7 +35,7 @@
         <label class="field-required" for="nominal">Nominal</label>
         <div class="nominal-wrap">
           <span class="nominal-prefix">Rp</span>
-          <input type="number" id="nominal" placeholder="0" min="0" required oninput="updateNominalDisplay(this)">
+          <input type="number" id="nominal" placeholder="0" min="0" required>
         </div>
         <div class="nominal-display" id="nominal-display"></div>
       </div>
@@ -47,7 +47,7 @@
 
       <div class="form-group">
         <label class="field-required" for="kategori">Kategori</label>
-        <select id="kategori" required onchange="updateKelompok(this.value)">
+        <select id="kategori" required>
           <option value="">— Pilih Kategori —</option>
           <optgroup label="Pemasukan">
             <option value="Gaji">Gaji</option>
