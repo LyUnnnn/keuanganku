@@ -10,15 +10,12 @@
   <meta name="apple-mobile-web-app-title" content="KeuanganKu">
   <link rel="manifest" href="manifest.json">
   <title>KeuanganKu — Input Laporan</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+  <link rel="stylesheet" href="./fonts/fonts.css">
   <link rel="stylesheet" href="./css/style.css?v=1777190904">
 </head>
 <body>
 
-<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<div class="overlay" id="overlay"></div>
 
 <div class="app">
 
@@ -36,21 +33,21 @@
 
     <nav class="sidebar-nav">
       <div class="nav-section">Utama</div>
-      <div class="nav-item active" onclick="showPanel('input')">
+      <div class="nav-item active" data-panel="input">
         Input Transaksi
         <span class="nav-badge" id="badge-queue" style="display:none">0</span>
       </div>
-      <div class="nav-item saldo-panel-link" onclick="showPanel('saldo')">
+      <div class="nav-item saldo-panel-link" data-panel="saldo">
         Saldo &amp; Ringkasan
       </div>
-      <div class="nav-item" onclick="showPanel('history')">
+      <div class="nav-item" data-panel="history">
         Riwayat Lokal
       </div>
       <div class="nav-section">Sistem</div>
-      <div class="nav-item" onclick="showPanel('settings')">
+      <div class="nav-item" data-panel="settings">
         Pengaturan
       </div>
-      <div class="nav-item" onclick="showPanel('about')">
+      <div class="nav-item" data-panel="about">
         Panduan
       </div>
     </nav>
@@ -70,11 +67,11 @@
   <!-- Main -->
   <main class="main" id="main-content">
     <div class="topbar">
-      <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+      <button class="hamburger" aria-label="Menu">&#9776;</button>
       <span class="topbar-title" id="topbar-title">Input Transaksi</span>
       <div class="topbar-actions">
-        <button class="btn-topbar" onclick="exportCSV()">Export CSV</button>
-        <button class="btn-topbar" onclick="showPanel('settings')">Pengaturan</button>
+        <button class="btn-topbar" data-action="export">Export CSV</button>
+        <button class="btn-topbar" data-action="settings">Pengaturan</button>
       </div>
     </div>
 
@@ -98,35 +95,12 @@
 
 <div class="toast-container" id="toast-container"></div>
 
+<script src="./lib/idb.js?v=1777190904"></script>
 <script src="./js/db.js?v=1777190904"></script>
 <script src="./js/api.js?v=1777190904"></script>
 <script src="./js/saldo.js?v=1777190904"></script>
 <script src="./js/ui.js?v=1777190904"></script>
 <script src="./js/auth.js?v=1777190904"></script>
-
-<script>
-  async function loadComponents() {
-    const panels = [
-      { id: 'panel-input',    src: './components/panel-input.html' },
-      { id: 'panel-saldo',    src: './components/panel-saldo.html' },
-      { id: 'panel-history',  src: './components/panel-history.html' },
-      { id: 'panel-settings', src: './components/panel-settings.html' },
-      { id: 'panel-about',    src: './components/panel-about.html' },
-    ];
-    await Promise.all(panels.map(async ({ id, src }) => {
-      try {
-        const res  = await fetch(src);
-        const html = await res.text();
-        document.getElementById(id).innerHTML = html;
-      } catch (err) {
-        console.warn('Gagal memuat komponen:', src, err);
-      }
-    }));
-    if (typeof initApp  === 'function') initApp();
-    if (typeof initAuth === 'function') initAuth();
-  }
-  loadComponents();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-</script>
+<script src="./js/init.js?v=1777190904"></script>
 </body>
 </html>
