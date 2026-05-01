@@ -4,6 +4,7 @@
 // Load dynamic component HTML into panels
 async function loadComponents() {
   const panels = [
+    { id: 'sidebar-container', src: './components/sidebar.html' },
     { id: 'panel-input',    src: './components/panel-input.html' },
     { id: 'panel-saldo',    src: './components/panel-saldo.html' },
     { id: 'panel-history',  src: './components/panel-history.html' },

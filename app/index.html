@@ -12,7 +12,7 @@
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <title>KeuanganKu — Input Laporan</title>
   <link rel="stylesheet" href="./fonts/fonts.css">
-  <link rel="stylesheet" href="./css/style.css?v=1777624037">
+  <link rel="stylesheet" href="./css/style.css?v=1777625212">
 </head>
 <body>
 
@@ -21,49 +21,7 @@
 <div class="app">
 
   <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <a class="logo" href="#">
-        <div class="logo-icon"><img src="./favicon.svg" alt="Logo"></div>
-        <div>
-          <div class="logo-text">KeuanganKu</div>
-          <div class="logo-sub">Laporan Keuangan</div>
-        </div>
-      </a>
-    </div>
-
-    <nav class="sidebar-nav">
-      <div class="nav-section">Utama</div>
-      <div class="nav-item active" data-panel="input">
-        Input Transaksi
-        <span class="nav-badge" id="badge-queue" style="display:none">0</span>
-      </div>
-      <div class="nav-item saldo-panel-link" data-panel="saldo">
-        Saldo &amp; Ringkasan
-      </div>
-      <div class="nav-item" data-panel="history">
-        Riwayat Lokal
-      </div>
-      <div class="nav-section">Sistem</div>
-      <div class="nav-item" data-panel="settings">
-        Pengaturan
-      </div>
-      <div class="nav-item" data-panel="about">
-        Panduan
-      </div>
-    </nav>
-
-    <div class="sidebar-footer">
-      <div class="sheets-status" id="sheets-status">
-        <div class="status-dot" id="status-dot"></div>
-        <div class="status-text">
-          <div class="status-label">Google Sheets</div>
-          <div class="status-value" id="status-value">Belum terhubung</div>
-        </div>
-        <span id="status-icon" style="font-size:11px;color:var(--text3);font-weight:600">OK</span>
-      </div>
-    </div>
-  </aside>
+  <div id="sidebar-container"></div>
 
   <!-- Main -->
   <main class="main" id="main-content">
@@ -97,12 +55,12 @@
 
 <div class="toast-container" id="toast-container"></div>
 
-<script src="./lib/idb.js?v=1777624037"></script>
-<script src="./js/db.js?v=1777624037"></script>
-<script src="./js/api.js?v=1777624037"></script>
-<script src="./js/saldo.js?v=1777624037"></script>
-<script src="./js/ui.js?v=1777624037"></script>
-<script src="./js/auth.js?v=1777624037"></script>
-<script src="./js/init.js?v=1777624037"></script>
+<script src="./lib/idb.js?v=1777625212"></script>
+<script src="./js/db.js?v=1777625212"></script>
+<script src="./js/api.js?v=1777625212"></script>
+<script src="./js/saldo.js?v=1777625212"></script>
+<script src="./js/ui.js?v=1777625212"></script>
+<script src="./js/auth.js?v=1777625212"></script>
+<script src="./js/init.js?v=1777625212"></script>
 </body>
 </html>
