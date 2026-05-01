@@ -28,6 +28,20 @@ async function fetchSheetRows(action, sheetName) {
   return Array.isArray(json.data) ? json.data : [];
 }
 
+async function upsertServerHistory(item) {
+  if (!navigator.onLine) return;
+  try {
+    await fetch('/api/history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ item }),
+    });
+  } catch (err) {
+    console.warn('Gagal simpan histori server:', err);
+  }
+}
+
 // Kirim satu item ke Google Sheets
 async function sendItemToSheets(item, db) {
   const formData = new URLSearchParams();
@@ -88,6 +102,7 @@ async function sendItemToSheets(item, db) {
   // Tandai terkirim & update DB
   item.sent = true;
   await db.put('transaksi', item);
+  await upsertServerHistory(item);
 }
 
 // Sinkronisasi otomatis semua item yang belum terkirim

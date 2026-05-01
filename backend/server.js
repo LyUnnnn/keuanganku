@@ -14,6 +14,7 @@ app.set('trust proxy', 1);
 // ─── Path ke file konfigurasi (di Docker volume) ──────────
 const DATA_DIR   = '/data';
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
+const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
 
 // ─── Middleware ────────────────────────────────────────────
 app.use(express.json());
@@ -57,6 +58,103 @@ function readConfig() {
 function writeConfig(cfg) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(ensureConfigShape(cfg), null, 2));
+}
+
+function getDefaultHistory() {
+  return {
+    transactions: [],
+    debts: [],
+  };
+}
+
+function ensureHistoryShape(data) {
+  const base = getDefaultHistory();
+  const store = data && typeof data === 'object' ? data : {};
+  return {
+    ...base,
+    ...store,
+    transactions: Array.isArray(store.transactions) ? store.transactions : [],
+    debts: Array.isArray(store.debts) ? store.debts : [],
+  };
+}
+
+function readHistoryStore() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(HISTORY_FILE)) return getDefaultHistory();
+    return ensureHistoryShape(JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8')));
+  } catch {
+    return getDefaultHistory();
+  }
+}
+
+function writeHistoryStore(store) {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(ensureHistoryShape(store), null, 2));
+}
+
+function isDebtRecord(item) {
+  return item && (item.recordType === 'hutang' || item.recordType === 'piutang');
+}
+
+function normalizeHistoryItem(item = {}) {
+  const now = Date.now();
+  const id = item.id != null ? item.id : now;
+  const base = {
+    id,
+    sent: !!item.sent,
+    source: item.source || 'local',
+    createdAt: item.createdAt ? Number(item.createdAt) : now,
+    updatedAt: now,
+  };
+
+  if (isDebtRecord(item)) {
+    return {
+      ...base,
+      recordType: item.recordType,
+      timestamp: item.timestamp || '',
+      tanggal: item.tanggal || '',
+      jatuhTempo: item.jatuhTempo || '',
+      deskripsi: item.deskripsi || '',
+      pemberiUtang: item.pemberiUtang || '',
+      nominal: Number(item.nominal) || 0,
+      status: item.status || 'Belum dibayar',
+      pengingat: item.pengingat || 'BELUM',
+      jenisUtang: item.jenisUtang || 'Transaksi',
+      sheetName: item.sheetName || (item.recordType === 'piutang' ? 'Piutang' : 'Hutang'),
+      sortKey: item.sortKey != null ? Number(item.sortKey) : id,
+    };
+  }
+
+  return {
+    ...base,
+    recordType: 'transaksi',
+    timestamp: item.timestamp || '',
+    tanggal: item.tanggal || '',
+    deskripsi: item.deskripsi || '',
+    kategori: item.kategori || '',
+    jenis: item.jenis || '',
+    nominal: Number(item.nominal) || 0,
+    sumber: item.sumber || '',
+    kelompok: item.kelompok || '',
+    sheetName: item.sheetName || 'Transaksi',
+    sortKey: item.sortKey != null ? Number(item.sortKey) : id,
+  };
+}
+
+function upsertHistoryItem(store, item) {
+  const normalized = normalizeHistoryItem(item);
+  const targetKey = isDebtRecord(normalized) ? 'debts' : 'transactions';
+  const collection = Array.isArray(store[targetKey]) ? store[targetKey] : [];
+  const idx = collection.findIndex(row => String(row.id) === String(normalized.id));
+  if (idx >= 0) {
+    collection[idx] = { ...collection[idx], ...normalized, updatedAt: Date.now() };
+  } else {
+    collection.push(normalized);
+  }
+  collection.sort((a, b) => (Number(b.updatedAt || b.createdAt || 0) - Number(a.updatedAt || a.createdAt || 0)));
+  store[targetKey] = collection;
+  return normalized;
 }
 
 function ensureConfigShape(cfg) {
@@ -399,6 +497,32 @@ app.get('/api/settings', requireAuth(), (req, res) => {
 });
 
 // ─── URL Validation Helper ────────────────────────────────
+app.get('/api/history', requireAuth(), (req, res) => {
+  const scope = String(req.query.scope || 'all').toLowerCase();
+  const store = readHistoryStore();
+
+  if (scope === 'transactions') {
+    return res.json({ status: 'ok', data: store.transactions });
+  }
+  if (scope === 'debts') {
+    return res.json({ status: 'ok', data: store.debts });
+  }
+  return res.json({ status: 'ok', data: store });
+});
+
+app.post('/api/history', requireAuth(), (req, res) => {
+  const item = req.body && (req.body.item || req.body);
+  if (!item || typeof item !== 'object') {
+    return res.status(400).json({ status: 'error', message: 'Payload histori tidak valid' });
+  }
+
+  const store = readHistoryStore();
+  const normalized = upsertHistoryItem(store, item);
+  writeHistoryStore(store);
+
+  res.json({ status: 'ok', data: normalized });
+});
+
 function isValidGoogleAppsScriptUrl(url) {
   if (!url) return true; // Empty is OK (not required)
   try {

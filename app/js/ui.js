@@ -84,7 +84,7 @@ function buildDebtKey(item) {
 
 function normalizeServerTransactionRow(row) {
   return {
-    id: `srv-tx-${row.sheetRow}`,
+    id: row.id != null ? `srv-tx-${row.id}` : `srv-tx-${row.sheetRow}`,
     source: 'server',
     sent: true,
     recordType: 'transaksi',
@@ -97,13 +97,13 @@ function normalizeServerTransactionRow(row) {
     sumber: row.sumber || '',
     kelompok: row.kelompok || '',
     sheetName: 'Transaksi',
-    sortKey: row.sheetRow || 0,
+    sortKey: row.updatedAt || row.createdAt || row.sheetRow || 0,
   };
 }
 
 function normalizeServerDebtRow(row, sheetName) {
   return {
-    id: `srv-${sheetName.toLowerCase()}-${row.sheetRow}`,
+    id: row.id != null ? `srv-${sheetName.toLowerCase()}-${row.id}` : `srv-${sheetName.toLowerCase()}-${row.sheetRow}`,
     source: 'server',
     sent: true,
     recordType: sheetName.toLowerCase(),
@@ -117,7 +117,7 @@ function normalizeServerDebtRow(row, sheetName) {
     pengingat: row.pengingat || 'BELUM',
     jenisUtang: row.jenisUtang || 'Transaksi',
     sheetName,
-    sortKey: row.sheetRow || 0,
+    sortKey: row.updatedAt || row.createdAt || row.sheetRow || 0,
   };
 }
 
@@ -320,18 +320,14 @@ async function loadData() {
 
   let serverTxRows = [];
   let serverDebtRows = [];
-  if (navigator.onLine && settings.scriptUrl && typeof fetchSheetRows === 'function') {
+  if (navigator.onLine && typeof apiGet === 'function') {
     try {
-      const [txRows, hutangRows, piutangRows] = await Promise.all([
-        fetchSheetRows('history', 'Transaksi'),
-        fetchSheetRows('debtRows', 'Hutang'),
-        fetchSheetRows('debtRows', 'Piutang'),
-      ]);
-      serverTxRows = txRows.map(normalizeServerTransactionRow);
-      serverDebtRows = [
-        ...hutangRows.map(row => normalizeServerDebtRow(row, 'Hutang')),
-        ...piutangRows.map(row => normalizeServerDebtRow(row, 'Piutang')),
-      ];
+      const histRes = await apiGet('/history?scope=all');
+      const refreshed = histRes && histRes.status === 'ok' ? histRes.data : null;
+      const refreshedTxRows = Array.isArray(refreshed?.transactions) ? refreshed.transactions : [];
+      const refreshedDebtRows = Array.isArray(refreshed?.debts) ? refreshed.debts : [];
+      serverTxRows = refreshedTxRows.map(normalizeServerTransactionRow);
+      serverDebtRows = refreshedDebtRows.map(row => normalizeServerDebtRow(row, row.recordType === 'piutang' ? 'Piutang' : 'Hutang'));
       serverDebtRows = serverDebtRows.filter(row => isCurrentMonthDate(row.tanggal));
     } catch (err) {
       console.warn('Gagal memuat histori server, fallback lokal:', err);
@@ -518,6 +514,9 @@ async function submitForm(e) {
   try {
     const db = await initDB();
     await db.add('transaksi', data);
+    if (typeof upsertServerHistory === 'function') {
+      await upsertServerHistory(data);
+    }
     await loadData();
     resetForm(true);
     toast('Tersimpan di lokal', 'success');
@@ -585,6 +584,9 @@ async function submitDebtForm(e) {
   try {
     const db = await initDB();
     await db.add('transaksi', data);
+    if (typeof upsertServerHistory === 'function') {
+      await upsertServerHistory(data);
+    }
     await loadData();
     resetDebtForm();
     toast(`${type} tersimpan di lokal`, 'success');
