@@ -7,8 +7,42 @@ let isSyncing = false;
 // Kirim satu item ke Google Sheets
 async function sendItemToSheets(item, db) {
   const formData = new URLSearchParams();
-  Object.entries(item).forEach(([k, v]) => formData.append(k, v));
-  formData.append('sheetName', settings.sheetName || 'Transaksi');
+  const sheetName = item.sheetName || settings.sheetName || 'Transaksi';
+  formData.append('sheetName', sheetName);
+
+  const isDebtItem = item.recordType === 'hutang' || item.recordType === 'piutang';
+  if (isDebtItem) {
+    [
+      'timestamp',
+      'tanggal',
+      'jatuhTempo',
+      'deskripsi',
+      'pemberiUtang',
+      'nominal',
+      'status',
+      'pengingat',
+      'jenisUtang',
+    ].forEach(key => {
+      if (item[key] !== undefined && item[key] !== null) {
+        formData.append(key, item[key]);
+      }
+    });
+  } else {
+    [
+      'timestamp',
+      'tanggal',
+      'deskripsi',
+      'kategori',
+      'jenis',
+      'nominal',
+      'sumber',
+      'kelompok',
+    ].forEach(key => {
+      if (item[key] !== undefined && item[key] !== null) {
+        formData.append(key, item[key]);
+      }
+    });
+  }
 
   // Better error detection with mode: 'cors'
   const response = await fetch(settings.scriptUrl, {

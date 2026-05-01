@@ -428,9 +428,11 @@ function applyModeRestrictions() {
   if (authState.mode === 'user') {
     
     document.querySelectorAll('.saldo-panel-link').forEach(el => el.style.display = 'none');
+    document.getElementById('nav-utang')?.style.setProperty('display', 'none');
     showPanel('input');
   } else {
     document.querySelectorAll('.saldo-panel-link').forEach(el => el.style.display = '');
+    document.getElementById('nav-utang')?.style.setProperty('display', '');
   }
 
   renderStats();    // Re-render stats (user mode menyembunyikan nominal)

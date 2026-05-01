@@ -7,6 +7,7 @@ async function loadComponents() {
     { id: 'panel-input',    src: './components/panel-input.html' },
     { id: 'panel-saldo',    src: './components/panel-saldo.html' },
     { id: 'panel-history',  src: './components/panel-history.html' },
+    { id: 'panel-utang',    src: './components/panel-utang.html' },
     { id: 'panel-settings', src: './components/panel-settings.html' },
     { id: 'panel-about',    src: './components/panel-about.html' },
   ];
@@ -38,6 +39,14 @@ function setupComponentListeners() {
         filterHistory(filterValue, filterChip);
       }
     }
+
+    const debtChip = e.target.closest('[data-debt-filter]');
+    if (debtChip && e.target.closest('#panel-utang')) {
+      const filterValue = debtChip.getAttribute('data-debt-filter');
+      if (typeof filterDebtHistory === 'function') {
+        filterDebtHistory(filterValue, debtChip);
+      }
+    }
   });
 
   // Panel-input: jenis selector buttons
@@ -56,12 +65,18 @@ function setupComponentListeners() {
     if (e.target.id === 'form-transaksi' && typeof submitForm === 'function') {
       submitForm(e);
     }
+    if (e.target.id === 'form-utang' && typeof submitDebtForm === 'function') {
+      submitDebtForm(e);
+    }
   });
 
   // Number input changes (nominal display)
   document.addEventListener('input', (e) => {
     if (e.target.id === 'nominal' && typeof updateNominalDisplay === 'function') {
       updateNominalDisplay(e.target);
+    }
+    if (e.target.id === 'nominal-utang' && typeof updateDebtNominalDisplay === 'function') {
+      updateDebtNominalDisplay(e.target);
     }
   });
 

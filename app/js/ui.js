@@ -6,11 +6,14 @@
 let selectedJenis  = '';
 let selectedSumber = '';
 let localHistory   = [];
+let debtHistory    = [];
 let currentFilter  = 'all';
+let currentDebtFilter = 'all';
 let deferredPrompt = null;
 let sidebarVisible = true; // track desktop sidebar state
 
 let settings = {};
+let selectedDebtType = 'Hutang';
 
 const kelompokMap = {
   'Gaji': 'Pemasukan', 'Pendapatan Usaha': 'Pemasukan',
@@ -127,7 +130,9 @@ async function loadData() {
   const db   = await initDB();
   localHistory = await db.getAll('transaksi');
   localHistory.sort((a, b) => b.id - a.id);
+  debtHistory = localHistory.filter(h => h.recordType === 'hutang' || h.recordType === 'piutang');
   renderHistory();
+  renderDebtHistory();
   renderStats();
   updateBadge();
 }
@@ -146,6 +151,14 @@ function updateTimestamp() {
 function setTodayDate() {
   const el = document.getElementById('tanggal');
   if (el) el.value = new Date().toISOString().split('T')[0];
+  const debtDate = document.getElementById('tanggal-utang');
+  if (debtDate) debtDate.value = new Date().toISOString().split('T')[0];
+  const dueDate = document.getElementById('jatuh-tempo');
+  if (dueDate && !dueDate.value) {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    dueDate.value = d.toISOString().split('T')[0];
+  }
 }
 
 // ─── Panels & Sidebar ─────────────────────────────────────
@@ -153,10 +166,11 @@ const PANEL_TITLES = {
   input:    'Input Transaksi',
   saldo:    'Saldo & Ringkasan',
   history:  'Riwayat Lokal',
+  utang:    'Hutang & Piutang',
   settings: 'Pengaturan',
   about:    'Panduan',
 };
-const PANEL_ORDER = ['input', 'saldo', 'history', 'settings', 'about'];
+const PANEL_ORDER = ['input', 'saldo', 'history', 'utang', 'settings', 'about'];
 
 function showPanel(name) {
   // User mode: block saldo panel
@@ -167,6 +181,10 @@ function showPanel(name) {
 
   if (name === 'settings' && typeof authState !== 'undefined' && authState.unlocked && authState.mode === 'user') {
     toast('Mode User tidak dapat melihat Pengaturan', 'error');
+    return;
+  }
+  if (name === 'utang' && !isAdmin()) {
+    toast('Hanya Admin yang bisa melihat Hutang & Piutang', 'error');
     return;
   }
 
@@ -186,6 +204,9 @@ function showPanel(name) {
 
   if (name === 'saldo' && typeof onSaldoPanelOpen === 'function') {
     onSaldoPanelOpen();
+  }
+  if (name === 'utang' && typeof onUtangPanelOpen === 'function') {
+    onUtangPanelOpen();
   }
 }
 
@@ -260,6 +281,7 @@ async function submitForm(e) {
 
   const data = {
     id:        Date.now(),
+    recordType:'transaksi',
     timestamp: document.getElementById('timestamp-display').textContent,
     tanggal:   document.getElementById('tanggal').value,
     deskripsi: document.getElementById('deskripsi').value.trim(),
@@ -286,6 +308,73 @@ async function submitForm(e) {
   }
 }
 
+function selectDebtType(val, el) {
+  selectedDebtType = val;
+  document.querySelectorAll('#utang-selector .jenis-btn').forEach(b => b.className = 'jenis-btn');
+  const cls = val === 'Hutang' ? 'active-keluar' : 'active-masuk';
+  el.classList.add(cls);
+  updateDebtFormLabels();
+}
+
+function updateDebtFormLabels() {
+  const subtitle = document.querySelector('#panel-utang .form-header p');
+  const btn = document.querySelector('#btn-utang-submit .btn-text');
+  const kontak = document.querySelector('label[for="pemberi-utang"]');
+  if (subtitle) subtitle.textContent = `Input data ke sheet ${selectedDebtType}`;
+  if (btn) btn.textContent = `Simpan ke Sheet ${selectedDebtType}`;
+  if (kontak) kontak.textContent = selectedDebtType === 'Hutang' ? 'Pemberi Utang' : 'Pemberi Piutang';
+}
+
+function updateDebtNominalDisplay(inp) {
+  const el = document.getElementById('nominal-utang-display');
+  const val = parseFloat(inp.value);
+  if (el) el.textContent = (!val || isNaN(val)) ? '' : formatRp(val);
+}
+
+async function submitDebtForm(e) {
+  e.preventDefault();
+  if (!isAdmin()) {
+    toast('Hanya Admin yang bisa input Hutang/Piutang', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-utang-submit');
+  if (btn) btn.disabled = true;
+  if (btn) btn.classList.add('loading');
+
+  const type = selectedDebtType || 'Hutang';
+  const nominal = parseFloat(document.getElementById('nominal-utang').value) || 0;
+  const data = {
+    id:        Date.now(),
+    recordType:type === 'Hutang' ? 'hutang' : 'piutang',
+    timestamp: new Date().toLocaleString('id-ID'),
+    tanggal:   document.getElementById('tanggal-utang').value,
+    jatuhTempo: document.getElementById('jatuh-tempo').value,
+    deskripsi: document.getElementById('deskripsi-utang').value.trim(),
+    pemberiUtang: document.getElementById('pemberi-utang').value.trim(),
+    nominal:   nominal,
+    status:    document.getElementById('status-utang').value,
+    pengingat: document.getElementById('pengingat-utang').value,
+    jenisUtang: document.getElementById('jenis-utang').value,
+    sheetName: type,
+    sent:      false,
+  };
+
+  try {
+    const db = await initDB();
+    await db.add('transaksi', data);
+    await loadData();
+    resetDebtForm();
+    toast(`${type} tersimpan di lokal`, 'success');
+    trySync();
+  } catch (err) {
+    toast('Gagal menyimpan lokal', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btn) btn.classList.remove('loading');
+  }
+}
+
 function resetForm(keepDate = false) {
   const fields = ['deskripsi', 'nominal', 'kategori', 'kelompok'];
   fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -298,6 +387,23 @@ function resetForm(keepDate = false) {
   selectedJenis  = '';
   selectedSumber = '';
   if (!keepDate) setTodayDate();
+}
+
+function resetDebtForm() {
+  const fields = ['tanggal-utang', 'jatuh-tempo', 'nominal-utang', 'pemberi-utang', 'deskripsi-utang'];
+  fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const nomDisplay = document.getElementById('nominal-utang-display');
+  if (nomDisplay) nomDisplay.textContent = '';
+  const statusEl = document.getElementById('status-utang');
+  if (statusEl) statusEl.value = 'Belum dibayar';
+  const reminderEl = document.getElementById('pengingat-utang');
+  if (reminderEl) reminderEl.value = 'BELUM';
+  const jenisEl = document.getElementById('jenis-utang');
+  if (jenisEl) jenisEl.value = 'Transaksi';
+  selectedDebtType = 'Hutang';
+  const hutangBtn = document.querySelector('#utang-selector .jenis-btn[data-val="Hutang"]');
+  if (hutangBtn) selectDebtType('Hutang', hutangBtn);
+  setTodayDate();
 }
 
 // ─── History ──────────────────────────────────────────────
@@ -315,9 +421,10 @@ function renderHistory() {
   const isAdminMode = typeof isAdmin === 'function' && isAdmin();
   const isUserMode  = typeof isUser  === 'function' && isUser();
 
+  const transactionRows = localHistory.filter(h => !h.recordType || h.recordType === 'transaksi');
   const filtered = currentFilter === 'all'
-    ? localHistory
-    : localHistory.filter(h => h.jenis === currentFilter);
+    ? transactionRows
+    : transactionRows.filter(h => h.jenis === currentFilter);
 
   if (!filtered.length) {
     container.innerHTML = `
@@ -373,6 +480,57 @@ function renderHistory() {
   }).join('')}</div>`;
 }
 
+function filterDebtHistory(filter, el) {
+  currentDebtFilter = filter;
+  document.querySelectorAll('[data-debt-filter]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderDebtHistory();
+}
+
+function renderDebtHistory() {
+  const container = document.getElementById('utang-history-container');
+  if (!container) return;
+
+  const filtered = currentDebtFilter === 'all'
+    ? debtHistory
+    : debtHistory.filter(h => (h.recordType || '') === currentDebtFilter.toLowerCase());
+
+  if (!filtered.length) {
+    container.innerHTML = `
+      <div class="history-empty">
+        <div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Belum ada data</div>
+        <p style="font-size:12px;color:var(--text3)">Data hutang/piutang akan muncul di sini</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="history-list">${filtered.map(h => {
+    const typeLabel = h.recordType === 'piutang' ? 'Piutang' : 'Hutang';
+    const statusCls = h.status === 'Sudah dibayar' ? 'dot-masuk' : 'dot-keluar';
+    const nominalCls = h.recordType === 'piutang' ? 'masuk-color' : 'keluar-color';
+    const sentLabel = h.sent ? 'Terkirim' : 'Pending';
+    return `
+      <div class="history-item">
+        <div class="history-dot ${statusCls}"></div>
+        <div class="history-body">
+          <div class="history-desc">${escapeHTML(h.deskripsi)}</div>
+          <div class="history-meta">${escapeHTML(h.tanggal)} · Jatuh tempo ${escapeHTML(h.jatuhTempo || '-')}</div>
+        </div>
+        <div class="history-right" style="display:flex;align-items:center;gap:10px">
+          <div style="text-align:right">
+            <div class="history-nominal ${nominalCls}">${formatRp(h.nominal || 0)}</div>
+            <div class="history-sumber">${escapeHTML(h.pemberiUtang || '-')} · ${escapeHTML(typeLabel)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+            <span class="btn-sent-tag">${escapeHTML(h.status || 'Belum dibayar')}</span>
+            <span style="font-size:11px;color:var(--text3)">${sentLabel}</span>
+            <button class="history-action-btn btn-delete" onclick="deleteItem(${h.id})" title="Hapus">Hapus</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('')}</div>`;
+}
+
 async function deleteItem(id) {
   if (!confirm('Hapus data ini dari riwayat lokal?')) return;
   try {
@@ -403,16 +561,17 @@ function renderStats() {
   if (!grid) return;
 
   const isUserMode = typeof isUser === 'function' && isUser();
+  const transactionRows = localHistory.filter(h => !h.recordType || h.recordType === 'transaksi');
 
-  const masuk  = localHistory.filter(h => h.jenis === 'Masuk').reduce((a, b) => a + b.nominal, 0);
-  const keluar = localHistory.filter(h => h.jenis === 'Keluar').reduce((a, b) => a + b.nominal, 0);
+  const masuk  = transactionRows.filter(h => h.jenis === 'Masuk').reduce((a, b) => a + b.nominal, 0);
+  const keluar = transactionRows.filter(h => h.jenis === 'Keluar').reduce((a, b) => a + b.nominal, 0);
 
   if (isUserMode) {
     // User mode: hide balance amounts
     grid.innerHTML = `
       <div class="stat-card">
         <div class="stat-label">Jumlah Transaksi</div>
-        <div class="stat-val" style="color:var(--text)">${localHistory.length}</div>
+        <div class="stat-val" style="color:var(--text)">${transactionRows.length}</div>
       </div>`;
   } else {
     grid.innerHTML = `
@@ -426,7 +585,7 @@ function renderStats() {
       </div>
       <div class="stat-card">
         <div class="stat-label">Semua Data</div>
-        <div class="stat-val" style="color:var(--text)">${localHistory.length}</div>
+        <div class="stat-val" style="color:var(--text)">${transactionRows.length}</div>
       </div>`;
   }
 }
@@ -453,6 +612,13 @@ function checkStatus() {
   if (active) checkInstallBanner();
 }
 
+function onUtangPanelOpen() {
+  const activeBtn = document.querySelector('#utang-selector .jenis-btn[data-val="' + selectedDebtType + '"]');
+  if (activeBtn) selectDebtType(selectedDebtType, activeBtn);
+  updateDebtFormLabels();
+  renderDebtHistory();
+}
+
 async function testConnection() {
   if (!settings.scriptUrl) { toast('Simpan URL Apps Script dahulu', 'error'); return; }
   toast('Menguji koneksi...', 'info');
@@ -466,11 +632,12 @@ async function testConnection() {
 
 // ─── Export CSV ───────────────────────────────────────────
 function exportCSV() {
-  if (!localHistory.length) { toast('Tidak ada data', 'info'); return; }
+  const transactionRows = localHistory.filter(h => !h.recordType || h.recordType === 'transaksi');
+  if (!transactionRows.length) { toast('Tidak ada data transaksi', 'info'); return; }
 
   const rows = [
     ['Timestamp','Tanggal','Deskripsi','Kategori','Jenis','Nominal','Sumber','Kelompok','Status'],
-    ...localHistory.map(h => [
+    ...transactionRows.map(h => [
       h.timestamp, h.tanggal, `"${h.deskripsi}"`,
       h.kategori, h.jenis, h.nominal, h.sumber, h.kelompok,
       h.sent ? 'Terkirim' : 'Lokal',

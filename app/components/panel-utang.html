@@ -1,0 +1,95 @@
+<div class="form-header">
+  <h1>Hutang & Piutang</h1>
+  <p>Input data ke sheet terpisah: Hutang dan Piutang</p>
+</div>
+
+<div class="form-card">
+  <div class="settings-section">
+    <div class="settings-title">Jenis Data</div>
+    <div class="jenis-selector" id="utang-selector" style="margin-top:12px">
+      <button class="jenis-btn active-netral" data-val="Hutang" onclick="selectDebtType('Hutang', this)">
+        <span class="jenis-icon">-</span>Hutang
+      </button>
+      <button class="jenis-btn active-masuk" data-val="Piutang" onclick="selectDebtType('Piutang', this)">
+        <span class="jenis-icon">+</span>Piutang
+      </button>
+    </div>
+  </div>
+</div>
+
+<form id="form-utang">
+  <div class="form-card">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="field-required" for="tanggal-utang">Tanggal Input</label>
+        <input type="date" id="tanggal-utang" required>
+      </div>
+
+      <div class="form-group">
+        <label class="field-required" for="jatuh-tempo">Jatuh Tempo</label>
+        <input type="date" id="jatuh-tempo" required>
+      </div>
+
+      <div class="form-group">
+        <label class="field-required" for="nominal-utang">Nominal</label>
+        <div class="nominal-wrap">
+          <span class="nominal-prefix">Rp</span>
+          <input type="number" id="nominal-utang" placeholder="0" min="0" required>
+        </div>
+        <div class="nominal-display" id="nominal-utang-display"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="field-required" for="pemberi-utang">Pemberi Utang / Piutang</label>
+        <input type="text" id="pemberi-utang" placeholder="Nama orang / instansi" required>
+      </div>
+
+      <div class="form-group full">
+        <label class="field-required" for="deskripsi-utang">Deskripsi</label>
+        <textarea id="deskripsi-utang" placeholder="Contoh: Pinjaman modal usaha, bayar tagihan, dll" required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="field-required" for="status-utang">Status</label>
+        <select id="status-utang" required>
+          <option value="Belum dibayar">Belum dibayar</option>
+          <option value="Sudah dibayar">Sudah dibayar</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="field-required" for="pengingat-utang">Pengingat</label>
+        <select id="pengingat-utang" required>
+          <option value="BELUM">BELUM</option>
+          <option value="SUDAH">SUDAH</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="field-required" for="jenis-utang">Jenis Utang</label>
+        <select id="jenis-utang" required>
+          <option value="Transaksi">Transaksi</option>
+          <option value="Non-traksaksi">Non-traksaksi</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn-submit" id="btn-utang-submit">
+      <div class="spinner"></div>
+      <span class="btn-text">Simpan ke Sheet</span>
+    </button>
+    <button type="button" class="btn-reset" onclick="resetDebtForm()">Reset</button>
+  </div>
+</form>
+
+<div class="form-card mb-3">
+  <div class="settings-title">Riwayat Lokal Hutang & Piutang</div>
+  <div class="history-filters" style="margin-top:12px">
+    <div class="filter-chip active" data-debt-filter="all">Semua</div>
+    <div class="filter-chip" data-debt-filter="Hutang">Hutang</div>
+    <div class="filter-chip" data-debt-filter="Piutang">Piutang</div>
+  </div>
+  <div id="utang-history-container" style="margin-top:12px"></div>
+</div>
