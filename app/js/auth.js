@@ -336,8 +336,10 @@ async function doLogin(mode, pin) {
         const sRes = await apiGet('/settings');
         if (sRes.status === 'ok' && sRes.data) {
           settings = { ...sRes.data };
-          // Simpan cache lokal untuk fallback offline
-          localStorage.setItem('keuanganku_settings_cache', JSON.stringify(settings));
+          // Simpan cache lokal tanpa URL agar tidak mudah terlihat di browser
+          localStorage.setItem('keuanganku_settings_cache', JSON.stringify({
+            sheetName: settings.sheetName || 'Transaksi',
+          }));
         }
       } catch {}
 
@@ -501,12 +503,20 @@ async function initAuth() {
       const sRes = await apiGet('/settings');
       if (sRes.status === 'ok') {
         settings = { ...sRes.data };
-        localStorage.setItem('keuanganku_settings_cache', JSON.stringify(settings));
+        localStorage.setItem('keuanganku_settings_cache', JSON.stringify({
+          sheetName: settings.sheetName || 'Transaksi',
+        }));
       }
     } catch {
       // Fallback ke cache offline
       const cached = localStorage.getItem('keuanganku_settings_cache');
-      if (cached) try { settings = JSON.parse(cached); } catch {}
+      if (cached) try {
+        const parsed = JSON.parse(cached);
+        settings = { ...parsed };
+        localStorage.setItem('keuanganku_settings_cache', JSON.stringify({
+          sheetName: settings.sheetName || 'Transaksi',
+        }));
+      } catch {}
     }
     dismissAuthOverlay();
     applyModeRestrictions();

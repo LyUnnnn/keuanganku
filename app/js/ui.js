@@ -51,7 +51,15 @@ async function loadSettings() {
   // Kalau belum ada (jarang terjadi), coba ambil dari cache offline.
   if (!settings || !settings.scriptUrl) {
     const cached = localStorage.getItem('keuanganku_settings_cache');
-    if (cached) try { settings = JSON.parse(cached); } catch {}
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        settings = { ...(settings || {}), ...parsed };
+        localStorage.setItem('keuanganku_settings_cache', JSON.stringify({
+          sheetName: settings.sheetName || 'Transaksi',
+        }));
+      } catch {}
+    }
   }
   applySettingsToForm();
 }
@@ -61,10 +69,10 @@ async function saveSettings() {
 
   const urlEl  = document.getElementById('script-url');
   const nameEl = document.getElementById('sheet-name');
-  const newSettings = {
-    scriptUrl: urlEl?.value.trim()  || '',
-    sheetName: nameEl?.value.trim() || 'Transaksi',
-  };
+  const scriptUrl = urlEl?.value.trim() || '';
+  const sheetName = nameEl?.value.trim() || 'Transaksi';
+  const newSettings = { sheetName };
+  if (scriptUrl) newSettings.scriptUrl = scriptUrl;
 
   try {
     // Simpan ke backend (Node.js) — semua device otomatis sinkron
@@ -77,9 +85,16 @@ async function saveSettings() {
     const json = await res.json();
     if (json.status !== 'ok') throw new Error(json.message);
 
-    settings = newSettings;
-    // Update cache offline
-    localStorage.setItem('keuanganku_settings_cache', JSON.stringify(settings));
+    settings = {
+      ...(settings || {}),
+      sheetName,
+      ...(scriptUrl ? { scriptUrl } : {}),
+    };
+    // Simpan cache offline tanpa URL agar tidak mudah dilihat di browser.
+    localStorage.setItem('keuanganku_settings_cache', JSON.stringify({
+      sheetName: settings.sheetName || 'Transaksi',
+    }));
+    if (urlEl) urlEl.value = '';
     checkStatus();
     toast('Pengaturan disimpan — semua perangkat akan sinkron', 'success');
   } catch (e) {
@@ -90,7 +105,10 @@ async function saveSettings() {
 function applySettingsToForm() {
   const urlEl  = document.getElementById('script-url');
   const nameEl = document.getElementById('sheet-name');
-  if (urlEl  && settings.scriptUrl) urlEl.value  = settings.scriptUrl;
+  if (urlEl) {
+    urlEl.value = '';
+    urlEl.placeholder = 'https://script.google.com/macros/s/...';
+  }
   if (nameEl && settings.sheetName) nameEl.value = settings.sheetName;
 }
 
