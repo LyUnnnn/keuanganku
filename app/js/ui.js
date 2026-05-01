@@ -8,7 +8,10 @@ let selectedSumber = '';
 let localHistory   = [];
 let debtHistory    = [];
 let currentFilter  = 'all';
+let currentSourceFilter = 'all';
+let currentMonthFilter = 'all';
 let currentDebtFilter = 'all';
+let currentDebtSourceFilter = 'all';
 let deferredPrompt = null;
 let sidebarVisible = true; // track desktop sidebar state
 
@@ -49,6 +52,184 @@ function normalizeMainSheetName(name) {
   const value = String(name ?? '').trim();
   if (!value || value === 'Hutang' || value === 'Piutang') return 'Transaksi';
   return value;
+}
+
+function buildTransactionKey(item) {
+  return [
+    item.recordType || 'transaksi',
+    item.timestamp || '',
+    item.tanggal || '',
+    item.deskripsi || '',
+    item.kategori || '',
+    item.jenis || '',
+    item.nominal ?? '',
+    item.sumber || '',
+    item.kelompok || '',
+  ].join('|');
+}
+
+function buildDebtKey(item) {
+  return [
+    item.recordType || 'hutang',
+    item.tanggal || '',
+    item.jatuhTempo || '',
+    item.deskripsi || '',
+    item.pemberiUtang || '',
+    item.nominal ?? '',
+    item.status || '',
+    item.pengingat || '',
+    item.jenisUtang || '',
+  ].join('|');
+}
+
+function normalizeServerTransactionRow(row) {
+  return {
+    id: `srv-tx-${row.sheetRow}`,
+    source: 'server',
+    sent: true,
+    recordType: 'transaksi',
+    timestamp: row.timestamp || '',
+    tanggal: row.tanggal || '',
+    deskripsi: row.deskripsi || '',
+    kategori: row.kategori || '',
+    jenis: row.jenis || '',
+    nominal: parseFloat(row.nominal) || 0,
+    sumber: row.sumber || '',
+    kelompok: row.kelompok || '',
+    sheetName: 'Transaksi',
+    sortKey: row.sheetRow || 0,
+  };
+}
+
+function normalizeServerDebtRow(row, sheetName) {
+  return {
+    id: `srv-${sheetName.toLowerCase()}-${row.sheetRow}`,
+    source: 'server',
+    sent: true,
+    recordType: sheetName.toLowerCase(),
+    timestamp: '',
+    tanggal: row.tanggal || '',
+    jatuhTempo: row.jatuhTempo || '',
+    deskripsi: row.deskripsi || '',
+    pemberiUtang: row.pemberiUtang || '',
+    nominal: parseFloat(row.nominal) || 0,
+    status: row.status || 'Belum dibayar',
+    pengingat: row.pengingat || 'BELUM',
+    jenisUtang: row.jenisUtang || 'Transaksi',
+    sheetName,
+    sortKey: row.sheetRow || 0,
+  };
+}
+
+function mergeRows(primaryRows, localRows, keyBuilder) {
+  const seen = new Set();
+  const merged = [];
+  const push = (item) => {
+    const key = keyBuilder(item);
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(item);
+  };
+
+  primaryRows.forEach(push);
+  localRows.forEach(push);
+  merged.sort((a, b) => (b.sortKey || 0) - (a.sortKey || 0));
+  return merged;
+}
+
+function parseAnyDate(value) {
+  if (!value) return null;
+  if (value instanceof Date && !isNaN(value)) return value;
+  const str = String(value).trim();
+  let m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[,\s].*)?$/);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+
+function getCurrentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function isCurrentMonthDate(value) {
+  const d = parseAnyDate(value);
+  if (!d) return false;
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+}
+
+function sourceLabel(item) {
+  return item.source === 'server' ? 'Server' : 'Lokal';
+}
+
+function buildMonthKey(value) {
+  const d = parseAnyDate(value);
+  if (!d) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(key) {
+  if (!key) return '';
+  const [year, month] = key.split('-').map(Number);
+  const d = new Date(year, month - 1, 1);
+  return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+}
+
+function formatDateLabel(value) {
+  const d = parseAnyDate(value);
+  if (!d) return String(value ?? '');
+  return d.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function formatAddedAt(value) {
+  if (!value) return '';
+  const str = String(value).trim();
+  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*|\s+)(\d{1,2})[.:](\d{2})(?:[.:](\d{2}))?/);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    return `${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}, ${String(m[4]).padStart(2, '0')}:${m[5]}`;
+  }
+  const parsed = parseAnyDate(str);
+  if (parsed) {
+    return parsed.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).replace(/\./g, ':');
+  }
+  return str;
+}
+
+function updateHistoryMonthOptions(rows) {
+  const select = document.getElementById('history-month-filter');
+  if (!select) return;
+
+  const current = currentMonthFilter || getCurrentMonthKey();
+  const keys = [...new Set(rows.map(row => buildMonthKey(row.tanggal)).filter(Boolean))]
+    .sort((a, b) => b.localeCompare(a));
+
+  select.innerHTML = `<option value="all">Semua Bulan</option>${
+    keys.map(key => `<option value="${key}">${escapeHTML(formatMonthLabel(key))}</option>`).join('')
+  }`;
+  if (keys.includes(current)) {
+    select.value = current;
+    currentMonthFilter = current;
+  } else if (keys.length) {
+    select.value = keys[0];
+    currentMonthFilter = keys[0];
+  } else {
+    select.value = 'all';
+    currentMonthFilter = 'all';
+  }
 }
 
 // ─── Settings — disimpan di backend Node.js ───────────────
@@ -134,9 +315,39 @@ function initApp() {
 // ─── Database → UI ────────────────────────────────────────
 async function loadData() {
   const db   = await initDB();
-  localHistory = await db.getAll('transaksi');
-  localHistory.sort((a, b) => b.id - a.id);
-  debtHistory = localHistory.filter(h => h.recordType === 'hutang' || h.recordType === 'piutang');
+  const storedRows = await db.getAll('transaksi');
+  storedRows.sort((a, b) => (b.id || 0) - (a.id || 0));
+
+  let serverTxRows = [];
+  let serverDebtRows = [];
+  if (navigator.onLine && settings.scriptUrl && typeof fetchSheetRows === 'function') {
+    try {
+      const [txRows, hutangRows, piutangRows] = await Promise.all([
+        fetchSheetRows('history', 'Transaksi'),
+        fetchSheetRows('debtRows', 'Hutang'),
+        fetchSheetRows('debtRows', 'Piutang'),
+      ]);
+      serverTxRows = txRows.map(normalizeServerTransactionRow);
+      serverDebtRows = [
+        ...hutangRows.map(row => normalizeServerDebtRow(row, 'Hutang')),
+        ...piutangRows.map(row => normalizeServerDebtRow(row, 'Piutang')),
+      ];
+      serverDebtRows = serverDebtRows.filter(row => isCurrentMonthDate(row.tanggal));
+    } catch (err) {
+      console.warn('Gagal memuat histori server, fallback lokal:', err);
+    }
+  }
+
+  const localTxRows = storedRows
+    .filter(h => !h.recordType || h.recordType === 'transaksi')
+    .map(item => ({ ...item, source: item.source || 'local', sortKey: item.id || 0 }));
+  const localDebtRows = storedRows
+    .filter(h => h.recordType === 'hutang' || h.recordType === 'piutang')
+    .map(item => ({ ...item, source: item.source || 'local', sortKey: item.id || 0 }));
+
+  localHistory = mergeRows(serverTxRows, localTxRows, buildTransactionKey);
+  debtHistory = mergeRows(serverDebtRows, localDebtRows, buildDebtKey);
+  updateHistoryMonthOptions(localHistory);
   renderHistory();
   renderDebtHistory();
   renderStats();
@@ -425,6 +636,18 @@ function filterHistory(filter, el) {
   renderHistory();
 }
 
+function filterHistorySource(filter, el) {
+  currentSourceFilter = filter;
+  document.querySelectorAll('[data-source-filter]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderHistory();
+}
+
+function filterHistoryMonth(value) {
+  currentMonthFilter = value;
+  renderHistory();
+}
+
 function renderHistory() {
   const container = document.getElementById('history-container');
   if (!container) return;
@@ -433,9 +656,15 @@ function renderHistory() {
   const isUserMode  = typeof isUser  === 'function' && isUser();
 
   const transactionRows = localHistory.filter(h => !h.recordType || h.recordType === 'transaksi');
-  const filtered = currentFilter === 'all'
-    ? transactionRows
-    : transactionRows.filter(h => h.jenis === currentFilter);
+  const filtered = transactionRows.filter(h => {
+    const jenisMatch = currentFilter === 'all' || h.jenis === currentFilter;
+    const sourceMatch = currentSourceFilter === 'all'
+      || (currentSourceFilter === 'server' && h.source === 'server')
+      || (currentSourceFilter === 'local' && h.source !== 'server');
+    const monthMatch = currentMonthFilter === 'all'
+      || buildMonthKey(h.tanggal) === currentMonthFilter;
+    return jenisMatch && sourceMatch && monthMatch;
+  });
 
   if (!filtered.length) {
     container.innerHTML = `
@@ -453,7 +682,9 @@ function renderHistory() {
 
     // Action buttons — only shown to admin
     let actionBtns = '';
-    if (isAdminMode || (!isAdminMode && !isUserMode)) {
+    if (h.source === 'server') {
+      actionBtns = `<span class="btn-sent-tag">Tersinkron</span>`;
+    } else if (isAdminMode || (!isAdminMode && !isUserMode)) {
       // Show actions in admin mode or when no auth is active
       if (!h.sent) {
         actionBtns = `
@@ -476,7 +707,7 @@ function renderHistory() {
         <div class="history-dot ${dotCls}"></div>
         <div class="history-body">
           <div class="history-desc">${escapeHTML(h.deskripsi)}</div>
-          <div class="history-meta">${escapeHTML(h.tanggal)} · ${escapeHTML(h.kategori)}</div>
+          <div class="history-meta">${escapeHTML(formatDateLabel(h.tanggal))} · Ditambahkan ${escapeHTML(formatAddedAt(h.timestamp))} · ${escapeHTML(h.kategori)}</div>
         </div>
         <div class="history-right" style="display:flex;align-items:center;gap:10px">
           <div style="text-align:right">
@@ -484,6 +715,7 @@ function renderHistory() {
             <div class="history-sumber">${escapeHTML(h.sumber)}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+            <span class="history-source-tag ${h.source === 'server' ? 'is-server' : 'is-local'}">${sourceLabel(h)}</span>
             ${actionBtns}
           </div>
         </div>
@@ -498,13 +730,24 @@ function filterDebtHistory(filter, el) {
   renderDebtHistory();
 }
 
+function filterDebtSourceHistory(filter, el) {
+  currentDebtSourceFilter = filter;
+  document.querySelectorAll('[data-debt-source-filter]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderDebtHistory();
+}
+
 function renderDebtHistory() {
   const container = document.getElementById('utang-history-container');
   if (!container) return;
 
-  const filtered = currentDebtFilter === 'all'
-    ? debtHistory
-    : debtHistory.filter(h => (h.recordType || '') === currentDebtFilter.toLowerCase());
+  const filtered = debtHistory.filter(h => {
+    const typeMatch = currentDebtFilter === 'all' || (h.recordType || '') === currentDebtFilter.toLowerCase();
+    const sourceMatch = currentDebtSourceFilter === 'all'
+      || (currentDebtSourceFilter === 'server' && h.source === 'server')
+      || (currentDebtSourceFilter === 'local' && h.source !== 'server');
+    return typeMatch && sourceMatch;
+  });
 
   if (!filtered.length) {
     container.innerHTML = `
@@ -520,6 +763,27 @@ function renderDebtHistory() {
     const statusCls = h.status === 'Sudah dibayar' ? 'dot-masuk' : 'dot-keluar';
     const nominalCls = h.recordType === 'piutang' ? 'masuk-color' : 'keluar-color';
     const sentLabel = h.sent ? 'Terkirim' : 'Pending';
+    if (h.source === 'server') {
+      return `
+      <div class="history-item">
+        <div class="history-dot ${statusCls}"></div>
+        <div class="history-body">
+          <div class="history-desc">${escapeHTML(h.deskripsi)}</div>
+          <div class="history-meta">${escapeHTML(h.tanggal)} · Jatuh tempo ${escapeHTML(h.jatuhTempo || '-')}</div>
+        </div>
+        <div class="history-right" style="display:flex;align-items:center;gap:10px">
+          <div style="text-align:right">
+            <div class="history-nominal ${nominalCls}">${formatRp(h.nominal || 0)}</div>
+            <div class="history-sumber">${escapeHTML(h.pemberiUtang || '-')} · ${escapeHTML(typeLabel)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+            <span class="history-source-tag ${h.source === 'server' ? 'is-server' : 'is-local'}">${sourceLabel(h)}</span>
+            <span class="btn-sent-tag">${escapeHTML(h.status || 'Belum dibayar')}</span>
+            ${h.source === 'server' ? '<span class="btn-sent-tag">Tersinkron</span>' : `<span style="font-size:11px;color:var(--text3)">${sentLabel}</span>`}
+          </div>
+        </div>
+      </div>`;
+    }
     return `
       <div class="history-item">
         <div class="history-dot ${statusCls}"></div>
@@ -533,6 +797,7 @@ function renderDebtHistory() {
             <div class="history-sumber">${escapeHTML(h.pemberiUtang || '-')} · ${escapeHTML(typeLabel)}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+            <span class="history-source-tag ${h.source === 'server' ? 'is-server' : 'is-local'}">${sourceLabel(h)}</span>
             <span class="btn-sent-tag">${escapeHTML(h.status || 'Belum dibayar')}</span>
             <span style="font-size:11px;color:var(--text3)">${sentLabel}</span>
             <button class="history-action-btn btn-delete" onclick="deleteItem(${h.id})" title="Hapus">Hapus</button>
@@ -567,6 +832,18 @@ async function clearLocalData() {
 }
 
 // ─── Stats ────────────────────────────────────────────────
+async function refreshHistoryFromServer() {
+  toast('Memuat histori dari server...', 'info');
+  await loadData();
+  toast('Histori diperbarui', 'success');
+}
+
+async function refreshDebtFromServer() {
+  toast('Memuat hutang/piutang dari server...', 'info');
+  await loadData();
+  toast('Hutang/piutang diperbarui', 'success');
+}
+
 function renderStats() {
   const grid = document.getElementById('stats-grid');
   if (!grid) return;

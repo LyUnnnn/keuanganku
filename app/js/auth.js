@@ -349,6 +349,9 @@ async function doLogin(mode, pin) {
         dismissAuthOverlay();
         applyModeRestrictions();
         checkStatus();
+        if (typeof loadData === 'function') {
+          loadData();
+        }
       }, 400);
     } else {
       throw new Error(res.message || 'PIN salah');
@@ -529,6 +532,9 @@ async function initAuth() {
     dismissAuthOverlay();
     applyModeRestrictions();
     checkStatus();
+    if (typeof loadData === 'function') {
+      loadData();
+    }
     return;
   }
 

@@ -5,11 +5,25 @@
 
 <div class="stats-grid" id="stats-grid"></div>
 
-<div class="history-filters">
-  <div class="filter-chip active" data-filter="all">Semua</div>
-  <div class="filter-chip" data-filter="Masuk">Masuk</div>
-  <div class="filter-chip" data-filter="Keluar">Keluar</div>
-  <div class="filter-chip" data-filter="Netral">Netral</div>
+<div class="history-toolbar">
+  <div class="history-filters">
+    <div class="filter-chip active" data-filter="all">Semua</div>
+    <div class="filter-chip" data-filter="Masuk">Masuk</div>
+    <div class="filter-chip" data-filter="Keluar">Keluar</div>
+    <div class="filter-chip" data-filter="Netral">Netral</div>
+  </div>
+
+  <div class="history-toolbar-right">
+    <div class="history-filters history-filters-inline">
+      <div class="filter-chip active" data-source-filter="all">Semua Sumber</div>
+      <div class="filter-chip" data-source-filter="server">Server</div>
+      <div class="filter-chip" data-source-filter="local">Lokal</div>
+    </div>
+    <select class="settings-input history-month-select" id="history-month-filter">
+      <option value="all">Semua Bulan</option>
+    </select>
+    <button type="button" class="btn-reset" onclick="refreshHistoryFromServer()" style="width:stretch; padding:8px 0;">Refresh Server</button>
+  </div>
 </div>
 
 <div id="history-container"></div>

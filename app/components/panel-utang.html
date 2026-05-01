@@ -91,5 +91,11 @@
     <div class="filter-chip" data-debt-filter="Hutang">Hutang</div>
     <div class="filter-chip" data-debt-filter="Piutang">Piutang</div>
   </div>
+  <div class="history-filters" style="margin-top:10px">
+    <div class="filter-chip active" data-debt-source-filter="all">Semua Sumber</div>
+    <div class="filter-chip" data-debt-source-filter="server">Server</div>
+    <div class="filter-chip" data-debt-source-filter="local">Lokal</div>
+    <button type="button" class="btn-reset" onclick="refreshDebtFromServer()">Refresh Server</button>
+  </div>
   <div id="utang-history-container" style="margin-top:12px"></div>
 </div>

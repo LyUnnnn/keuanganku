@@ -4,6 +4,30 @@
 
 let isSyncing = false;
 
+async function fetchSheetRows(action, sheetName) {
+  if (!settings.scriptUrl || !navigator.onLine) return [];
+
+  const url = new URL(settings.scriptUrl);
+  url.searchParams.set('action', action);
+  if (sheetName) url.searchParams.set('sheetName', sheetName);
+
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    mode: 'cors',
+    credentials: 'omit',
+  });
+
+  if (!response.ok) {
+    throw new Error(`History request failed: ${response.status}`);
+  }
+
+  const json = await response.json();
+  if (json.status !== 'ok') {
+    throw new Error(json.message || 'Failed to fetch rows');
+  }
+  return Array.isArray(json.data) ? json.data : [];
+}
+
 // Kirim satu item ke Google Sheets
 async function sendItemToSheets(item, db) {
   const formData = new URLSearchParams();

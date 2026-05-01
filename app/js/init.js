@@ -41,11 +41,33 @@ function setupComponentListeners() {
       }
     }
 
+    const sourceChip = e.target.closest('[data-source-filter]');
+    if (sourceChip && e.target.closest('#panel-history')) {
+      const filterValue = sourceChip.getAttribute('data-source-filter');
+      if (typeof filterHistorySource === 'function') {
+        filterHistorySource(filterValue, sourceChip);
+      }
+    }
+
+    if (e.target && e.target.id === 'history-month-filter' && e.target.closest('#panel-history')) {
+      if (typeof filterHistoryMonth === 'function') {
+        filterHistoryMonth(e.target.value);
+      }
+    }
+
     const debtChip = e.target.closest('[data-debt-filter]');
     if (debtChip && e.target.closest('#panel-utang')) {
       const filterValue = debtChip.getAttribute('data-debt-filter');
       if (typeof filterDebtHistory === 'function') {
         filterDebtHistory(filterValue, debtChip);
+      }
+    }
+
+    const debtSourceChip = e.target.closest('[data-debt-source-filter]');
+    if (debtSourceChip && e.target.closest('#panel-utang')) {
+      const filterValue = debtSourceChip.getAttribute('data-debt-source-filter');
+      if (typeof filterDebtSourceHistory === 'function') {
+        filterDebtSourceHistory(filterValue, debtSourceChip);
       }
     }
   });
