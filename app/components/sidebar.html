@@ -12,25 +12,29 @@
 
     <nav class="sidebar-nav">
       <div class="nav-section">Utama</div>
-      <div class="nav-item active" onclick="showPanel('input')">
+      <div class="nav-item active" data-panel="input">
         <span class="nav-icon">✏️</span>
         Input Transaksi
         <span class="nav-badge" id="badge-queue" style="display:none">0</span>
       </div>
-      <div class="nav-item" onclick="showPanel('history')">
+      <div class="nav-item" data-panel="saldo">
+        <span class="nav-icon">💹</span>
+        Saldo &amp; Ringkasan
+      </div>
+      <div class="nav-item" data-panel="history">
         <span class="nav-icon">📋</span>
         Riwayat Lokal
       </div>
-      <div class="nav-item" onclick="showPanel('utang')" id="nav-utang">
+      <div class="nav-item" data-panel="utang" id="nav-utang">
         <span class="nav-icon">🧾</span>
         Hutang &amp; Piutang
       </div>
       <div class="nav-section">Koneksi</div>
-      <div class="nav-item" onclick="showPanel('settings')" id="nav-settings">
+      <div class="nav-item" data-panel="settings" id="nav-settings">
         <span class="nav-icon">⚙️</span>
         Pengaturan
       </div>
-      <div class="nav-item" onclick="showPanel('about')">
+      <div class="nav-item" data-panel="about">
         <span class="nav-icon">ℹ️</span>
         Panduan
       </div>

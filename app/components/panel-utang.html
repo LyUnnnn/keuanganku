@@ -6,11 +6,11 @@
 <div class="form-card">
   <div class="settings-section">
     <div class="settings-title">Jenis Data</div>
-    <div class="jenis-selector" id="utang-selector" style="margin-top:12px">
-      <button class="jenis-btn active-netral" data-val="Hutang" onclick="selectDebtType('Hutang', this)">
+    <div class="jenis-selector" id="utang-selector" style="margin-top:12px; display:flex; justify-content: center;">
+      <button class="jenis-btn active-netral" data-val="Hutang" onclick="selectDebtType('Hutang', this)" style="width:50%;">
         <span class="jenis-icon">-</span>Hutang
       </button>
-      <button class="jenis-btn active-masuk" data-val="Piutang" onclick="selectDebtType('Piutang', this)">
+      <button class="jenis-btn active-masuk" data-val="Piutang" onclick="selectDebtType('Piutang', this)" style="width:50%;">
         <span class="jenis-icon">+</span>Piutang
       </button>
     </div>
@@ -84,7 +84,7 @@
   </div>
 </form>
 
-<div class="form-card mb-3">
+<div class="form-card mb-3" style="margin-top:30px">
   <div class="settings-title">Riwayat Lokal Hutang & Piutang</div>
   <div class="history-filters" style="margin-top:12px">
     <div class="filter-chip active" data-debt-filter="all">Semua</div>

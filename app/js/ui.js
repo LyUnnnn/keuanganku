@@ -45,6 +45,12 @@ function escapeHTML(value) {
     .replace(/'/g, '&#39;');
 }
 
+function normalizeMainSheetName(name) {
+  const value = String(name ?? '').trim();
+  if (!value || value === 'Hutang' || value === 'Piutang') return 'Transaksi';
+  return value;
+}
+
 // ─── Settings — disimpan di backend Node.js ───────────────
 // Settings diambil dari /api/settings saat login (di auth.js).
 // ui.js hanya perlu sync form → server saat save.
@@ -59,7 +65,7 @@ async function loadSettings() {
         const parsed = JSON.parse(cached);
         settings = { ...(settings || {}), ...parsed };
         localStorage.setItem('keuanganku_settings_cache', JSON.stringify({
-          sheetName: settings.sheetName || 'Transaksi',
+          sheetName: normalizeMainSheetName(settings.sheetName),
         }));
       } catch {}
     }
@@ -73,7 +79,7 @@ async function saveSettings() {
   const urlEl  = document.getElementById('script-url');
   const nameEl = document.getElementById('sheet-name');
   const scriptUrl = urlEl?.value.trim() || '';
-  const sheetName = nameEl?.value.trim() || 'Transaksi';
+  const sheetName = normalizeMainSheetName(nameEl?.value);
   const newSettings = { sheetName };
   if (scriptUrl) newSettings.scriptUrl = scriptUrl;
 
@@ -95,7 +101,7 @@ async function saveSettings() {
     };
     // Simpan cache offline tanpa URL agar tidak mudah dilihat di browser.
     localStorage.setItem('keuanganku_settings_cache', JSON.stringify({
-      sheetName: settings.sheetName || 'Transaksi',
+      sheetName: normalizeMainSheetName(settings.sheetName),
     }));
     if (urlEl) urlEl.value = '';
     checkStatus();
@@ -112,7 +118,7 @@ function applySettingsToForm() {
     urlEl.value = '';
     urlEl.placeholder = 'https://script.google.com/macros/s/...';
   }
-  if (nameEl && settings.sheetName) nameEl.value = settings.sheetName;
+  if (nameEl && settings.sheetName) nameEl.value = normalizeMainSheetName(settings.sheetName);
 }
 
 // ─── Init ─────────────────────────────────────────────────
@@ -193,9 +199,14 @@ function showPanel(name) {
   if (panel) panel.classList.add('active');
 
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const idx = PANEL_ORDER.indexOf(name);
-  const navItems = document.querySelectorAll('.nav-item');
-  if (navItems[idx]) navItems[idx].classList.add('active');
+  const activeNav = document.querySelector(`.nav-item[data-panel="${name}"]`);
+  if (activeNav) {
+    activeNav.classList.add('active');
+  } else {
+    const idx = PANEL_ORDER.indexOf(name);
+    const navItems = document.querySelectorAll('.nav-item');
+    if (navItems[idx]) navItems[idx].classList.add('active');
+  }
 
   const titleEl = document.getElementById('topbar-title');
   if (titleEl) titleEl.textContent = PANEL_TITLES[name] || '';

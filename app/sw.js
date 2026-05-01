@@ -1,5 +1,5 @@
 // ─── sw.js — Service Worker ───────────────────────────────
-const CACHE   = 'keuanganku-v7';
+const CACHE   = 'keuanganku-v8';
 const ASSETS  = [
   './',
   './index.html',
@@ -16,6 +16,7 @@ const ASSETS  = [
   './components/panel-input.html',
   './components/panel-saldo.html',
   './components/panel-history.html',
+  './components/sidebar.html',
   './components/panel-utang.html',
   './components/panel-settings.html',
   './components/panel-about.html',

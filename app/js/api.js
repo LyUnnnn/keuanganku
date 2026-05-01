@@ -7,10 +7,14 @@ let isSyncing = false;
 // Kirim satu item ke Google Sheets
 async function sendItemToSheets(item, db) {
   const formData = new URLSearchParams();
-  const sheetName = item.sheetName || settings.sheetName || 'Transaksi';
-  formData.append('sheetName', sheetName);
-
+  const requestedSheetName = item.sheetName || settings.sheetName || 'Transaksi';
   const isDebtItem = item.recordType === 'hutang' || item.recordType === 'piutang';
+  const sheetName = isDebtItem
+    ? (item.sheetName || (item.recordType === 'piutang' ? 'Piutang' : 'Hutang'))
+    : (requestedSheetName === 'Hutang' || requestedSheetName === 'Piutang'
+        ? 'Transaksi'
+        : requestedSheetName);
+  formData.append('sheetName', sheetName);
   if (isDebtItem) {
     [
       'timestamp',
