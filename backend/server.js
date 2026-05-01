@@ -374,8 +374,19 @@ app.post('/api/change-pin', requireAuth(['admin']), (req, res) => {
 
 // â”€â”€â”€ POST /api/logout â€” hapus cookie autentikasi â”€â”€â”€â”€â”€â”€
 app.post('/api/logout', (req, res) => {
-  const cfg = readConfig();
-  bumpAuthTokenVersion(cfg);
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : (parseCookies(req.headers.cookie || '').keuanganku_token || '');
+  const payload = verifyToken(token);
+
+  if (payload) {
+    const cfg = readConfig();
+    if (Number(payload.version || 0) === getAuthTokenVersion(cfg)) {
+      bumpAuthTokenVersion(cfg);
+    }
+  }
+
   clearAuthCookie(req, res);
   clearLegacyCookies(req, res);
   res.json({ status: 'ok', message: 'Logout berhasil' });
@@ -393,9 +404,8 @@ function isValidGoogleAppsScriptUrl(url) {
   try {
     const urlObj = new URL(url);
     if (urlObj.protocol !== 'https:') return false;
-    // Must be Apps Script URL
-    return /^script\.google\.com$/.test(urlObj.hostname) && 
-           /^\/macros\/d\/[a-zA-Z0-9_-]+\/useweb\/?/.test(urlObj.pathname);
+    if (urlObj.hostname !== 'script.google.com') return false;
+    return /^\/macros\/(s|d)\/[a-zA-Z0-9_-]+\/(exec|useweb)\/?$/.test(urlObj.pathname);
   } catch {
     return false;
   }
@@ -409,7 +419,7 @@ app.post('/api/settings', requireAuth(['admin']), (req, res) => {
   if (scriptUrl !== undefined && scriptUrl && !isValidGoogleAppsScriptUrl(scriptUrl)) {
     return res.status(400).json({ 
       status: 'error', 
-      message: 'URL harus Apps Script Google yang valid (https://script.google.com/macros/d/[ID]/useweb). URL lainnya tidak diizinkan.' 
+      message: 'URL harus Apps Script Google yang valid (https://script.google.com/macros/s/[ID]/exec atau /macros/d/[ID]/useweb). URL lainnya tidak diizinkan.' 
     });
   }
 

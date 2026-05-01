@@ -48,13 +48,10 @@ server {
     }
 
     # ─── Security headers ─────────────────────────────────
-    # style-src: 'unsafe-inline' diperlukan karena banyak komponen memakai
-    #   atribut style= dan JS mengubah .style.* langsung (tidak praktis dihapus semua).
-    # connect-src: Apps Script men-redirect ke script.googleusercontent.com,
-    #   sehingga harus include wildcard *.googleusercontent.com.
-    # script-src: 'unsafe-inline' dan 'unsafe-eval' TIDAK diberikan —
-    #   semua script sudah di file eksternal (.js), lebih aman.
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://script.google.com https://*.googleapis.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self';" always;
+    # App ini masih memakai inline onclick/handler dari HTML component.
+    # CSP dibuat kompatibel dulu supaya UI tidak patah; refactor ke delegated
+    # listeners diperlukan kalau ingin mengencangkan CSP lagi nanti.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://script.google.com https://*.googleapis.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self';" always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
