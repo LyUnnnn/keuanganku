@@ -42,6 +42,22 @@ async function upsertServerHistory(item) {
   }
 }
 
+async function deleteServerHistory(item) {
+  if (!navigator.onLine) return;
+  const response = await fetch('/api/history/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ item }),
+  });
+
+  const json = await response.json().catch(() => null);
+  if (!response.ok || !json || json.status !== 'ok') {
+    throw new Error(json?.message || `Delete history failed: ${response.status}`);
+  }
+  return json;
+}
+
 // Kirim satu item ke Google Sheets
 async function sendItemToSheets(item, db) {
   const formData = new URLSearchParams();
@@ -55,6 +71,7 @@ async function sendItemToSheets(item, db) {
   formData.append('sheetName', sheetName);
   if (isDebtItem) {
     [
+      'recordId',
       'timestamp',
       'tanggal',
       'jatuhTempo',
@@ -71,6 +88,7 @@ async function sendItemToSheets(item, db) {
     });
   } else {
     [
+      'recordId',
       'timestamp',
       'tanggal',
       'deskripsi',

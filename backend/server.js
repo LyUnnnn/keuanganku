@@ -112,6 +112,7 @@ function normalizeHistoryItem(item = {}) {
     return {
       ...base,
       recordType: item.recordType,
+      recordId: item.recordId || '',
       timestamp: item.timestamp || '',
       tanggal: item.tanggal || '',
       jatuhTempo: item.jatuhTempo || '',
@@ -129,6 +130,7 @@ function normalizeHistoryItem(item = {}) {
   return {
     ...base,
     recordType: 'transaksi',
+    recordId: item.recordId || '',
     timestamp: item.timestamp || '',
     tanggal: item.tanggal || '',
     deskripsi: item.deskripsi || '',
@@ -137,6 +139,10 @@ function normalizeHistoryItem(item = {}) {
     nominal: Number(item.nominal) || 0,
     sumber: item.sumber || '',
     kelompok: item.kelompok || '',
+    transferId: item.transferId || '',
+    transferLeg: item.transferLeg || '',
+    transferSource: item.transferSource || '',
+    transferTarget: item.transferTarget || '',
     sheetName: item.sheetName || 'Transaksi',
     sortKey: item.sortKey != null ? Number(item.sortKey) : id,
   };
@@ -155,6 +161,101 @@ function upsertHistoryItem(store, item) {
   collection.sort((a, b) => (Number(b.updatedAt || b.createdAt || 0) - Number(a.updatedAt || a.createdAt || 0)));
   store[targetKey] = collection;
   return normalized;
+}
+
+function getHistoryCollection(store, item) {
+  return isDebtRecord(item) ? 'debts' : 'transactions';
+}
+
+function rowMatchesHistoryItem(row, item) {
+  if (isDebtRecord(item)) {
+    return String(row.id) === String(item.id)
+      || (
+        String(row.tanggal || '') === String(item.tanggal || '')
+        && String(row.jatuhTempo || '') === String(item.jatuhTempo || '')
+        && String(row.deskripsi || '') === String(item.deskripsi || '')
+        && String(row.pemberiUtang || '') === String(item.pemberiUtang || '')
+        && Number(row.nominal || 0) === Number(item.nominal || 0)
+        && String(row.status || '') === String(item.status || '')
+        && String(row.pengingat || '') === String(item.pengingat || '')
+        && String(row.jenisUtang || '') === String(item.jenisUtang || '')
+      );
+  }
+
+  return String(row.id) === String(item.id)
+    || (
+      String(row.recordId || '') === String(item.recordId || '')
+      || (
+      String(row.timestamp || '') === String(item.timestamp || '')
+      && String(row.tanggal || '') === String(item.tanggal || '')
+      && String(row.deskripsi || '') === String(item.deskripsi || '')
+      && String(row.kategori || '') === String(item.kategori || '')
+      && String(row.jenis || '') === String(item.jenis || '')
+      && Number(row.nominal || 0) === Number(item.nominal || 0)
+      && String(row.sumber || '') === String(item.sumber || '')
+      && String(row.kelompok || '') === String(item.kelompok || '')
+      && String(row.transferId || '') === String(item.transferId || '')
+      && String(row.transferLeg || '') === String(item.transferLeg || '')
+      )
+    );
+}
+
+function removeHistoryItem(store, item) {
+  const targetKey = getHistoryCollection(store, item);
+  const collection = Array.isArray(store[targetKey]) ? store[targetKey] : [];
+  const before = collection.length;
+  store[targetKey] = collection.filter(row => !rowMatchesHistoryItem(row, item));
+  return before - store[targetKey].length;
+}
+
+function getSyncConfig() {
+  const cfg = readConfig();
+  return cfg && cfg.settings ? cfg.settings : { scriptUrl: '' };
+}
+
+function getItemSheetName(item) {
+  if (isDebtRecord(item)) {
+    return item.sheetName || (item.recordType === 'piutang' ? 'Piutang' : 'Hutang');
+  }
+  return item.sheetName || 'Transaksi';
+}
+
+async function deleteHistoryRowFromSheets(item) {
+  const settings = getSyncConfig();
+  if (!item || !(item.sent || item.source === 'server')) return { skipped: true };
+  if (!settings.scriptUrl) throw new Error('Settings scriptUrl belum tersedia');
+
+  const formData = new URLSearchParams();
+  formData.append('action', 'deleteHistory');
+  formData.append('sheetName', getItemSheetName(item));
+
+  if (isDebtRecord(item)) {
+    ['recordId', 'timestamp', 'tanggal', 'jatuhTempo', 'deskripsi', 'pemberiUtang', 'nominal', 'status', 'pengingat', 'jenisUtang']
+      .forEach(key => {
+        if (item[key] !== undefined && item[key] !== null) {
+          formData.append(key, item[key]);
+        }
+      });
+  } else {
+    ['recordId', 'timestamp', 'tanggal', 'deskripsi', 'kategori', 'jenis', 'nominal', 'sumber', 'kelompok', 'transferId', 'transferLeg']
+      .forEach(key => {
+        if (item[key] !== undefined && item[key] !== null) {
+          formData.append(key, item[key]);
+        }
+      });
+  }
+
+  const response = await fetch(settings.scriptUrl, {
+    method: 'POST',
+    body: formData,
+    mode: 'cors',
+    credentials: 'omit',
+  });
+  if (!response.ok && response.status !== 0) {
+    throw new Error(`Delete request failed: ${response.status}`);
+  }
+
+  return { skipped: false };
 }
 
 function ensureConfigShape(cfg) {
@@ -521,6 +622,27 @@ app.post('/api/history', requireAuth(), (req, res) => {
   writeHistoryStore(store);
 
   res.json({ status: 'ok', data: normalized });
+});
+
+app.post('/api/history/delete', requireAuth(['admin']), async (req, res) => {
+  const item = req.body && (req.body.item || req.body);
+  if (!item || typeof item !== 'object') {
+    return res.status(400).json({ status: 'error', message: 'Payload hapus histori tidak valid' });
+  }
+
+  try {
+    if (item.sent || item.source === 'server') {
+      await deleteHistoryRowFromSheets(item);
+    }
+
+    const store = readHistoryStore();
+    const removed = removeHistoryItem(store, item);
+    writeHistoryStore(store);
+
+    return res.json({ status: 'ok', removed });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: err.toString() });
+  }
 });
 
 function isValidGoogleAppsScriptUrl(url) {

@@ -5,6 +5,7 @@
 // ─── State ───────────────────────────────────────────────
 let selectedJenis  = '';
 let selectedSumber = '';
+let selectedTujuan = '';
 let localHistory   = [];
 let debtHistory    = [];
 let currentFilter  = 'all';
@@ -56,6 +57,7 @@ function normalizeMainSheetName(name) {
 
 function buildTransactionKey(item) {
   return [
+    item.recordId || '',
     item.recordType || 'transaksi',
     item.timestamp || '',
     item.tanggal || '',
@@ -65,11 +67,15 @@ function buildTransactionKey(item) {
     item.nominal ?? '',
     item.sumber || '',
     item.kelompok || '',
+    item.transferId || '',
+    item.transferLeg || '',
+    item.transferTarget || '',
   ].join('|');
 }
 
 function buildDebtKey(item) {
   return [
+    item.recordId || '',
     item.recordType || 'hutang',
     item.tanggal || '',
     item.jatuhTempo || '',
@@ -96,6 +102,10 @@ function normalizeServerTransactionRow(row) {
     nominal: parseFloat(row.nominal) || 0,
     sumber: row.sumber || '',
     kelompok: row.kelompok || '',
+    recordId: row.recordId || '',
+    transferId: row.transferId || '',
+    transferLeg: row.transferLeg || '',
+    transferTarget: row.transferTarget || '',
     sheetName: 'Transaksi',
     sortKey: row.updatedAt || row.createdAt || row.sheetRow || 0,
   };
@@ -116,6 +126,7 @@ function normalizeServerDebtRow(row, sheetName) {
     status: row.status || 'Belum dibayar',
     pengingat: row.pengingat || 'BELUM',
     jenisUtang: row.jenisUtang || 'Transaksi',
+    recordId: row.recordId || '',
     sheetName,
     sortKey: row.updatedAt || row.createdAt || row.sheetRow || 0,
   };
@@ -361,6 +372,32 @@ function updateTimestamp() {
     hour:'2-digit', minute:'2-digit', second:'2-digit',
   });
 }
+
+function updateTransferTargetVisibility() {
+  const card = document.getElementById('transfer-target-card');
+  const input = document.getElementById('tujuan');
+  const sourceLabel = document.getElementById('sumber-label');
+  const kategoriGroup = document.getElementById('kategori-group');
+  const kelompokGroup = document.getElementById('kelompok-group');
+  const btnText = document.querySelector('#btn-submit .btn-text');
+  const titleEl = document.querySelector('#panel-input .form-header h1');
+  const subtitleEl = document.querySelector('#panel-input .form-header p');
+  const isTransfer = selectedJenis === 'Netral';
+  if (card) card.hidden = !isTransfer;
+  if (sourceLabel) sourceLabel.textContent = isTransfer ? 'Akun Asal' : 'Sumber Uang';
+  if (kategoriGroup) kategoriGroup.hidden = isTransfer;
+  if (kelompokGroup) kelompokGroup.hidden = isTransfer;
+  if (btnText) btnText.textContent = isTransfer ? 'Kirim Transfer ke Google Sheets' : 'Kirim ke Google Sheets';
+  if (titleEl) titleEl.textContent = isTransfer ? 'Transfer Antar Akun' : 'Tambah Transaksi';
+  if (subtitleEl) subtitleEl.textContent = isTransfer
+    ? 'Pindahkan saldo dari satu akun ke akun lain'
+    : 'Isi data transaksi lalu kirim ke Google Sheets';
+  if (!isTransfer) {
+    selectedTujuan = '';
+    if (input) input.value = '';
+    document.querySelectorAll('.tujuan-pill').forEach(p => p.classList.remove('active'));
+  }
+}
 function setTodayDate() {
   const el = document.getElementById('tanggal');
   if (el) el.value = new Date().toISOString().split('T')[0];
@@ -463,6 +500,15 @@ function selectJenis(val, el) {
   document.querySelectorAll('.jenis-btn').forEach(b => b.className = 'jenis-btn');
   const cls = val === 'Masuk' ? 'active-masuk' : val === 'Keluar' ? 'active-keluar' : 'active-netral';
   el.classList.add(cls);
+  updateTransferTargetVisibility();
+  if (val === 'Netral') {
+    const kategori = document.getElementById('kategori');
+    const kelompok = document.getElementById('kelompok');
+    if (kategori) kategori.value = 'Transfer Antar Akun';
+    if (kelompok) kelompok.value = 'Non-Pengeluaran';
+    const sumber = document.getElementById('sumber');
+    if (sumber && selectedSumber) sumber.value = selectedSumber;
+  }
 }
 
 function selectSumber(val, el) {
@@ -470,6 +516,31 @@ function selectSumber(val, el) {
   document.querySelectorAll('.sumber-pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('sumber').value = val;
+  if (selectedJenis === 'Netral') {
+    if (selectedTujuan === val) {
+      selectedTujuan = '';
+      const tujuanInput = document.getElementById('tujuan');
+      if (tujuanInput) tujuanInput.value = '';
+      document.querySelectorAll('.tujuan-pill').forEach(p => p.classList.remove('active'));
+    }
+    const category = document.getElementById('kategori');
+    const group = document.getElementById('kelompok');
+    if (category) category.value = 'Transfer Antar Akun';
+    if (group) group.value = 'Non-Pengeluaran';
+  }
+}
+
+function selectTujuan(val, el) {
+  if (selectedJenis !== 'Netral') return;
+  if (val === selectedSumber) {
+    toast('Akun tujuan harus berbeda dari akun asal!', 'error');
+    return;
+  }
+  selectedTujuan = val;
+  document.querySelectorAll('.tujuan-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  const input = document.getElementById('tujuan');
+  if (input) input.value = val;
 }
 
 function updateKelompok(val) {
@@ -490,36 +561,105 @@ async function submitForm(e) {
     toast('Pilih Jenis dan Sumber Uang terlebih dahulu!', 'error');
     return;
   }
+  const isTransfer = selectedJenis === 'Netral';
+  if (isTransfer && !selectedTujuan) {
+    toast('Pilih akun tujuan untuk transfer!', 'error');
+    return;
+  }
+  if (isTransfer && selectedTujuan === selectedSumber) {
+    toast('Akun tujuan harus berbeda dari akun sumber!', 'error');
+    return;
+  }
+  if (!isTransfer) {
+    const kategori = document.getElementById('kategori');
+    const kelompok = document.getElementById('kelompok');
+    if (!kategori?.value) {
+      toast('Pilih kategori terlebih dahulu!', 'error');
+      return;
+    }
+    if (!kelompok?.value) {
+      toast('Kelompok kategori belum terisi!', 'error');
+      return;
+    }
+  }
 
   const btn = document.getElementById('btn-submit');
   btn.disabled = true;
   btn.classList.add('loading');
 
   const nominal = parseFloat(document.getElementById('nominal').value) || 0;
-
-  const data = {
-    id:        Date.now(),
+  const baseId = Date.now();
+  const timestamp = document.getElementById('timestamp-display').textContent;
+  const tanggal = document.getElementById('tanggal').value;
+  const baseDescription = document.getElementById('deskripsi').value.trim();
+  const kategori = isTransfer ? 'Transfer Antar Akun' : document.getElementById('kategori').value;
+  const kelompok = isTransfer ? 'Non-Pengeluaran' : document.getElementById('kelompok').value;
+  const transferId = isTransfer ? `transfer-${baseId}` : '';
+  const records = isTransfer ? [
+    {
+      id: baseId,
+      recordType: 'transaksi',
+      timestamp,
+      tanggal,
+      deskripsi: baseDescription ? `${baseDescription} (Keluar ke ${selectedTujuan})` : `Transfer keluar ke ${selectedTujuan}`,
+      kategori,
+      jenis: 'Keluar',
+      nominal: Math.abs(nominal),
+      sumber: selectedSumber,
+      kelompok,
+      sent: false,
+      recordId: `tx-${baseId}-out`,
+      transferId,
+      transferLeg: 'out',
+      transferSource: selectedSumber,
+      transferTarget: selectedTujuan,
+      sheetName: 'Transaksi',
+    },
+    {
+      id: baseId + 1,
+      recordType: 'transaksi',
+      timestamp,
+      tanggal,
+      deskripsi: baseDescription ? `${baseDescription} (Masuk dari ${selectedSumber})` : `Transfer masuk dari ${selectedSumber}`,
+      kategori,
+      jenis: 'Masuk',
+      nominal: Math.abs(nominal),
+      sumber: selectedTujuan,
+      kelompok,
+      sent: false,
+      recordId: `tx-${baseId}-in`,
+      transferId,
+      transferLeg: 'in',
+      transferSource: selectedSumber,
+      transferTarget: selectedTujuan,
+      sheetName: 'Transaksi',
+    },
+  ] : [{
+    id: baseId,
     recordType:'transaksi',
-    timestamp: document.getElementById('timestamp-display').textContent,
-    tanggal:   document.getElementById('tanggal').value,
-    deskripsi: document.getElementById('deskripsi').value.trim(),
+    timestamp,
+    tanggal,
+    deskripsi: baseDescription,
     kategori:  document.getElementById('kategori').value,
     jenis:     selectedJenis,
-    nominal:   selectedJenis === 'Netral' ? -Math.abs(nominal) : nominal,
+    nominal:   nominal,
     sumber:    selectedSumber,
     kelompok:  document.getElementById('kelompok').value,
     sent:      false,
-  };
+    recordId:  `tx-${baseId}`,
+  }];
 
   try {
     const db = await initDB();
-    await db.add('transaksi', data);
-    if (typeof upsertServerHistory === 'function') {
-      await upsertServerHistory(data);
+    for (const record of records) {
+      await db.add('transaksi', record);
+      if (typeof upsertServerHistory === 'function') {
+        await upsertServerHistory(record);
+      }
     }
     await loadData();
     resetForm(true);
-    toast('Tersimpan di lokal', 'success');
+    toast(isTransfer ? 'Transfer tersimpan di lokal' : 'Tersimpan di lokal', 'success');
     trySync();
   } catch (err) {
     toast('Gagal menyimpan lokal', 'error');
@@ -579,6 +719,7 @@ async function submitDebtForm(e) {
     jenisUtang: document.getElementById('jenis-utang').value,
     sheetName: type,
     sent:      false,
+    recordId:  `debt-${Date.now()}`,
   };
 
   try {
@@ -606,10 +747,27 @@ function resetForm(keepDate = false) {
   if (nomDisplay) nomDisplay.textContent = '';
   document.querySelectorAll('.jenis-btn').forEach(b => b.className = 'jenis-btn');
   document.querySelectorAll('.sumber-pill').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tujuan-pill').forEach(p => p.classList.remove('active'));
   const sumberInput = document.getElementById('sumber');
   if (sumberInput) sumberInput.value = '';
+  const tujuanInput = document.getElementById('tujuan');
+  if (tujuanInput) tujuanInput.value = '';
   selectedJenis  = '';
   selectedSumber = '';
+  selectedTujuan = '';
+  updateTransferTargetVisibility();
+  const titleEl = document.querySelector('#panel-input .form-header h1');
+  const subtitleEl = document.querySelector('#panel-input .form-header p');
+  const btnText = document.querySelector('#btn-submit .btn-text');
+  const sourceLabel = document.getElementById('sumber-label');
+  const kategoriGroup = document.getElementById('kategori-group');
+  const kelompokGroup = document.getElementById('kelompok-group');
+  if (titleEl) titleEl.textContent = 'Tambah Transaksi';
+  if (subtitleEl) subtitleEl.textContent = 'Isi data transaksi lalu kirim ke Google Sheets';
+  if (btnText) btnText.textContent = 'Kirim ke Google Sheets';
+  if (sourceLabel) sourceLabel.textContent = 'Sumber Uang';
+  if (kategoriGroup) kategoriGroup.hidden = false;
+  if (kelompokGroup) kelompokGroup.hidden = false;
   if (!keepDate) setTodayDate();
 }
 
@@ -681,21 +839,26 @@ function renderHistory() {
     const dotCls = h.jenis === 'Masuk' ? 'dot-masuk' : h.jenis === 'Keluar' ? 'dot-keluar' : 'dot-netral';
     const nomCls = h.jenis === 'Masuk' ? 'masuk-color' : h.jenis === 'Keluar' ? 'keluar-color' : 'netral-color';
     const sign   = h.jenis === 'Masuk' ? '+' : h.jenis === 'Keluar' ? '-' : '';
+    const transferTag = h.transferId
+      ? `<span class="btn-sent-tag">Transfer ${h.transferLeg === 'in' ? 'Masuk' : 'Keluar'}</span>`
+      : '';
 
     // Action buttons — only shown to admin
     let actionBtns = '';
     if (h.source === 'server') {
-      actionBtns = `<span class="btn-sent-tag">Tersinkron</span>`;
+      actionBtns = (isAdminMode || (!isAdminMode && !isUserMode))
+        ? `<span class="btn-sent-tag">Tersinkron</span><button class="history-action-btn btn-delete" onclick='deleteItem(${JSON.stringify(h.id)}, "transaksi")' title="Hapus">Hapus</button>`
+        : `<span class="btn-sent-tag">Tersinkron</span>`;
     } else if (isAdminMode || (!isAdminMode && !isUserMode)) {
       // Show actions in admin mode or when no auth is active
       if (!h.sent) {
         actionBtns = `
           <button class="history-action-btn btn-resend" onclick="manualSync(${h.id})" title="Kirim Ulang">Kirim Ulang</button>
-          <button class="history-action-btn btn-delete"  onclick="deleteItem(${h.id})" title="Hapus">Hapus</button>`;
+          <button class="history-action-btn btn-delete"  onclick='deleteItem(${JSON.stringify(h.id)}, "transaksi")' title="Hapus">Hapus</button>`;
       } else {
         actionBtns = `
           <span class="btn-sent-tag">Terkirim</span>
-          <button class="history-action-btn btn-delete" onclick="deleteItem(${h.id})" title="Hapus">Hapus</button>`;
+          <button class="history-action-btn btn-delete" onclick='deleteItem(${JSON.stringify(h.id)}, "transaksi")' title="Hapus">Hapus</button>`;
       }
     } else if (isUserMode) {
       // User mode: no actions
@@ -718,6 +881,7 @@ function renderHistory() {
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
             <span class="history-source-tag ${h.source === 'server' ? 'is-server' : 'is-local'}">${sourceLabel(h)}</span>
+            ${transferTag}
             ${actionBtns}
           </div>
         </div>
@@ -765,6 +929,12 @@ function renderDebtHistory() {
     const statusCls = h.status === 'Sudah dibayar' ? 'dot-masuk' : 'dot-keluar';
     const nominalCls = h.recordType === 'piutang' ? 'masuk-color' : 'keluar-color';
     const sentLabel = h.sent ? 'Terkirim' : 'Pending';
+    const isAdminMode = typeof isAdmin === 'function' && isAdmin();
+    const isUserMode = typeof isUser === 'function' && isUser();
+    const canDelete = isAdminMode || (!isAdminMode && !isUserMode);
+    const actionBtns = canDelete
+      ? `<button class="history-action-btn btn-delete" onclick='deleteItem(${JSON.stringify(h.id)}, ${JSON.stringify(h.recordType || 'hutang')})' title="Hapus">Hapus</button>`
+      : '';
     if (h.source === 'server') {
       return `
       <div class="history-item">
@@ -781,7 +951,8 @@ function renderDebtHistory() {
           <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
             <span class="history-source-tag ${h.source === 'server' ? 'is-server' : 'is-local'}">${sourceLabel(h)}</span>
             <span class="btn-sent-tag">${escapeHTML(h.status || 'Belum dibayar')}</span>
-            ${h.source === 'server' ? '<span class="btn-sent-tag">Tersinkron</span>' : `<span style="font-size:11px;color:var(--text3)">${sentLabel}</span>`}
+            <span class="btn-sent-tag">Tersinkron</span>
+            ${actionBtns}
           </div>
         </div>
       </div>`;
@@ -802,21 +973,63 @@ function renderDebtHistory() {
             <span class="history-source-tag ${h.source === 'server' ? 'is-server' : 'is-local'}">${sourceLabel(h)}</span>
             <span class="btn-sent-tag">${escapeHTML(h.status || 'Belum dibayar')}</span>
             <span style="font-size:11px;color:var(--text3)">${sentLabel}</span>
-            <button class="history-action-btn btn-delete" onclick="deleteItem(${h.id})" title="Hapus">Hapus</button>
+            ${actionBtns}
           </div>
         </div>
       </div>`;
   }).join('')}</div>`;
 }
 
-async function deleteItem(id) {
-  if (!confirm('Hapus data ini dari riwayat lokal?')) return;
+async function deleteItem(id, kind = 'transaksi') {
+  const collection = kind === 'transaksi'
+    ? localHistory.filter(h => !h.recordType || h.recordType === 'transaksi')
+    : debtHistory.filter(h => h.recordType === kind);
+  const target = collection.find(h => String(h.id) === String(id));
+  if (!target) {
+    toast('Data tidak ditemukan', 'error');
+    return;
+  }
+
+  const relatedItems = kind === 'transaksi' && target.transferId
+    ? collection.filter(h => h.transferId && h.transferId === target.transferId)
+    : [target];
+  const needsServerDelete = relatedItems.some(item => item.source === 'server' || item.sent);
+  const localRows = [];
+
+  if (!confirm(needsServerDelete
+    ? 'Hapus data ini dari server, sheet, dan lokal?'
+    : 'Hapus data ini dari riwayat lokal?')) return;
+
   try {
     const db = await initDB();
-    await db.delete('transaksi', id);
+    const dbItems = await db.getAll('transaksi');
+    for (const item of relatedItems) {
+      const key = kind === 'transaksi' ? buildTransactionKey(item) : buildDebtKey(item);
+      const match = dbItems.find(row => {
+        const rowKey = kind === 'transaksi' ? buildTransactionKey(row) : buildDebtKey(row);
+        return rowKey === key;
+      });
+      if (match) localRows.push(match);
+    }
+
+    if (needsServerDelete) {
+      if (!navigator.onLine) {
+        toast('Internet diperlukan untuk hapus data server', 'error');
+        return;
+      }
+      if (typeof deleteServerHistory === 'function') {
+        for (const item of relatedItems) {
+          await deleteServerHistory(item);
+        }
+      }
+    }
+
+    for (const row of localRows) {
+      await db.delete('transaksi', row.id);
+    }
     await loadData();
-    toast('Data dihapus dari lokal', 'info');
-  } catch {
+    toast(needsServerDelete ? 'Data dihapus dari server dan lokal' : 'Data dihapus dari lokal', 'info');
+  } catch (err) {
     toast('Gagal menghapus data', 'error');
   }
 }
@@ -852,9 +1065,10 @@ function renderStats() {
 
   const isUserMode = typeof isUser === 'function' && isUser();
   const transactionRows = localHistory.filter(h => !h.recordType || h.recordType === 'transaksi');
+  const flowRows = transactionRows.filter(h => h.kategori !== 'Transfer Antar Akun');
 
-  const masuk  = transactionRows.filter(h => h.jenis === 'Masuk').reduce((a, b) => a + b.nominal, 0);
-  const keluar = transactionRows.filter(h => h.jenis === 'Keluar').reduce((a, b) => a + b.nominal, 0);
+  const masuk  = flowRows.filter(h => h.jenis === 'Masuk').reduce((a, b) => a + b.nominal, 0);
+  const keluar = flowRows.filter(h => h.jenis === 'Keluar').reduce((a, b) => a + b.nominal, 0);
 
   if (isUserMode) {
     // User mode: hide balance amounts
