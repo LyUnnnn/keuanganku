@@ -65,6 +65,9 @@ async function sendItemToSheets(item, db) {
       'nominal',
       'sumber',
       'kelompok',
+      'transferId',
+      'transferLeg',
+      'transferTarget',
     ].forEach(key => {
       if (item[key] !== undefined && item[key] !== null) {
         formData.append(key, item[key]);

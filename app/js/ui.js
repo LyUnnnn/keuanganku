@@ -5,6 +5,7 @@
 // ─── State ───────────────────────────────────────────────
 let selectedJenis  = '';
 let selectedSumber = '';
+let selectedTujuan = '';
 let localHistory   = [];
 let debtHistory    = [];
 let currentFilter  = 'all';
@@ -65,6 +66,9 @@ function buildTransactionKey(item) {
     item.nominal ?? '',
     item.sumber || '',
     item.kelompok || '',
+    item.transferId || '',
+    item.transferLeg || '',
+    item.transferTarget || '',
   ].join('|');
 }
 
@@ -96,6 +100,9 @@ function normalizeServerTransactionRow(row) {
     nominal: parseFloat(row.nominal) || 0,
     sumber: row.sumber || '',
     kelompok: row.kelompok || '',
+    transferId: row.transferId || '',
+    transferLeg: row.transferLeg || '',
+    transferTarget: row.transferTarget || '',
     sheetName: 'Transaksi',
     sortKey: row.sheetRow || 0,
   };
@@ -467,6 +474,28 @@ function selectJenis(val, el) {
   document.querySelectorAll('.jenis-btn').forEach(b => b.className = 'jenis-btn');
   const cls = val === 'Masuk' ? 'active-masuk' : val === 'Keluar' ? 'active-keluar' : 'active-netral';
   el.classList.add(cls);
+
+  // Show/hide transfer target & kategori fields based on jenis
+  const transferCard = document.getElementById('transfer-target-card');
+  const kategoriGroup = document.getElementById('kategori-group');
+  const kelompokGroup = document.getElementById('kelompok-group');
+  const kategoriLabel = document.getElementById('kategori-label');
+  const kelompokLabel = document.getElementById('kelompok-label');
+
+  if (val === 'Netral') {
+    // Transfer mode: hide kategori/kelompok, show transfer target
+    if (kategoriGroup) kategoriGroup.hidden = true;
+    if (kelompokGroup) kelompokGroup.hidden = true;
+    if (transferCard) transferCard.hidden = false;
+  } else {
+    // Regular transaction mode: show kategori/kelompok, hide transfer target
+    if (kategoriGroup) kategoriGroup.hidden = false;
+    if (kelompokGroup) kelompokGroup.hidden = false;
+    if (transferCard) transferCard.hidden = true;
+    // Update required attribute for kategori when not transfer
+    const kategoriEl = document.getElementById('kategori');
+    if (kategoriEl) kategoriEl.required = true;
+  }
 }
 
 function selectSumber(val, el) {
@@ -474,6 +503,13 @@ function selectSumber(val, el) {
   document.querySelectorAll('.sumber-pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('sumber').value = val;
+}
+
+function selectTujuan(val, el) {
+  selectedTujuan = val;
+  document.querySelectorAll('.tujuan-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tujuan').value = val;
 }
 
 function updateKelompok(val) {
@@ -495,6 +531,12 @@ async function submitForm(e) {
     return;
   }
 
+  // Validate transfer mode
+  if (selectedJenis === 'Netral' && !selectedTujuan) {
+    toast('Pilih Akun Tujuan untuk transfer!', 'error');
+    return;
+  }
+
   const btn = document.getElementById('btn-submit');
   btn.disabled = true;
   btn.classList.add('loading');
@@ -507,11 +549,14 @@ async function submitForm(e) {
     timestamp: document.getElementById('timestamp-display').textContent,
     tanggal:   document.getElementById('tanggal').value,
     deskripsi: document.getElementById('deskripsi').value.trim(),
-    kategori:  document.getElementById('kategori').value,
+    kategori:  selectedJenis === 'Netral' ? 'Transfer Antar Akun' : document.getElementById('kategori').value,
     jenis:     selectedJenis,
     nominal:   selectedJenis === 'Netral' ? -Math.abs(nominal) : nominal,
     sumber:    selectedSumber,
-    kelompok:  document.getElementById('kelompok').value,
+    kelompok:  selectedJenis === 'Netral' ? 'Non-Pengeluaran' : document.getElementById('kelompok').value,
+    transferId: selectedJenis === 'Netral' ? `tx-${Date.now()}` : '',
+    transferLeg: selectedJenis === 'Netral' ? 'source' : '',
+    transferTarget: selectedJenis === 'Netral' ? selectedTujuan : '',
     sent:      false,
   };
 
@@ -604,10 +649,20 @@ function resetForm(keepDate = false) {
   if (nomDisplay) nomDisplay.textContent = '';
   document.querySelectorAll('.jenis-btn').forEach(b => b.className = 'jenis-btn');
   document.querySelectorAll('.sumber-pill').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tujuan-pill').forEach(p => p.classList.remove('active'));
   const sumberInput = document.getElementById('sumber');
   if (sumberInput) sumberInput.value = '';
+  const tujuanInput = document.getElementById('tujuan');
+  if (tujuanInput) tujuanInput.value = '';
+  const transferCard = document.getElementById('transfer-target-card');
+  if (transferCard) transferCard.hidden = true;
+  const kategoriGroup = document.getElementById('kategori-group');
+  const kelompokGroup = document.getElementById('kelompok-group');
+  if (kategoriGroup) kategoriGroup.hidden = false;
+  if (kelompokGroup) kelompokGroup.hidden = false;
   selectedJenis  = '';
   selectedSumber = '';
+  selectedTujuan = '';
   if (!keepDate) setTodayDate();
 }
 

@@ -18,7 +18,7 @@
     <span class="jenis-icon">-</span>Keluar
   </button>
   <button class="jenis-btn" data-val="Netral">
-    <span class="jenis-icon">=</span>Netral
+    <span class="jenis-icon">=</span>Transfer
   </button>
 </div>
 
@@ -45,8 +45,8 @@
         <textarea id="deskripsi" placeholder="Contoh: Makan siang di warteg, Gaji bulan Januari..." required></textarea>
       </div>
 
-      <div class="form-group">
-        <label class="field-required" for="kategori">Kategori</label>
+      <div class="form-group" id="kategori-group">
+        <label class="field-required" for="kategori" id="kategori-label">Kategori</label>
         <select id="kategori" required>
           <option value="">— Pilih Kategori —</option>
           <optgroup label="Pemasukan">
@@ -83,8 +83,8 @@
         </select>
       </div>
 
-      <div class="form-group">
-        <label for="kelompok">Kelompok Kategori</label>
+      <div class="form-group" id="kelompok-group">
+        <label for="kelompok" id="kelompok-label">Kelompok Kategori</label>
         <select id="kelompok">
           <option value="">— Otomatis terisi —</option>
           <option value="Pemasukan">Pemasukan</option>
@@ -98,8 +98,8 @@
   </div>
 
   <!-- Sumber Uang -->
-  <div class="form-card">
-    <label style="display:block;margin-bottom:12px" class="field-required">Sumber Uang</label>
+  <div class="form-card" id="sumber-card">
+    <label style="display:block;margin-bottom:12px" class="field-required" id="sumber-label">Sumber Uang</label>
     <div class="sumber-grid" id="sumber-grid">
       <div class="sumber-pill" data-val="BCA"       onclick="selectSumber('BCA',this)">BCA</div>
       <div class="sumber-pill" data-val="Cash"      onclick="selectSumber('Cash',this)">Cash</div>
@@ -109,6 +109,19 @@
       <div class="sumber-pill" data-val="ShopeePay" onclick="selectSumber('ShopeePay',this)">ShopeePay</div>
     </div>
     <input type="hidden" id="sumber" required>
+  </div>
+
+  <div class="form-card" id="transfer-target-card" hidden>
+    <label style="display:block;margin-bottom:12px" class="field-required">Akun Tujuan</label>
+    <div class="sumber-grid" id="tujuan-grid">
+      <div class="sumber-pill tujuan-pill" data-val="BCA"       onclick="selectTujuan('BCA',this)">BCA</div>
+      <div class="sumber-pill tujuan-pill" data-val="Cash"      onclick="selectTujuan('Cash',this)">Cash</div>
+      <div class="sumber-pill tujuan-pill" data-val="OVO"       onclick="selectTujuan('OVO',this)">OVO</div>
+      <div class="sumber-pill tujuan-pill" data-val="GOPAY"     onclick="selectTujuan('GOPAY',this)">Gopay</div>
+      <div class="sumber-pill tujuan-pill" data-val="DANA"      onclick="selectTujuan('DANA',this)">Dana</div>
+      <div class="sumber-pill tujuan-pill" data-val="ShopeePay" onclick="selectTujuan('ShopeePay',this)">ShopeePay</div>
+    </div>
+    <input type="hidden" id="tujuan">
   </div>
 
   <div class="form-actions">
