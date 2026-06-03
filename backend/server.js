@@ -78,7 +78,7 @@ function getDefaultConfig() {
     },
     settings: {
       scriptUrl: '',
-      sheetName: 'Transaksi',
+      sheetName: 'Data',
     },
     auth: {
       tokenVersion: 0,
@@ -425,7 +425,10 @@ app.post('/api/settings', requireAuth(['admin']), (req, res) => {
 
   const cfg = readConfig();
   if (scriptUrl !== undefined) cfg.settings.scriptUrl = scriptUrl;
-  if (sheetName !== undefined) cfg.settings.sheetName = sheetName || 'Transaksi';
+  if (sheetName !== undefined) {
+    const normalizedSheetName = sheetName === 'Transaksi' ? 'Data' : sheetName;
+    cfg.settings.sheetName = normalizedSheetName || 'Data';
+  }
   writeConfig(cfg);
 
   res.json({ status: 'ok', message: 'Settings disimpan', data: cfg.settings });

@@ -51,7 +51,7 @@ function escapeHTML(value) {
 
 function normalizeMainSheetName(name) {
   const value = String(name ?? '').trim();
-  if (!value || value === 'Hutang' || value === 'Piutang') return 'Transaksi';
+  if (!value || value === 'Hutang' || value === 'Piutang' || value === 'Transaksi') return 'Data';
   return value;
 }
 
@@ -103,7 +103,7 @@ function normalizeServerTransactionRow(row) {
     transferId: row.transferId || '',
     transferLeg: row.transferLeg || '',
     transferTarget: row.transferTarget || '',
-    sheetName: 'Transaksi',
+    sheetName: 'Data',
     sortKey: row.sheetRow || 0,
   };
 }
@@ -330,7 +330,7 @@ async function loadData() {
   if (navigator.onLine && settings.scriptUrl && typeof fetchSheetRows === 'function') {
     try {
       const [txRows, hutangRows, piutangRows] = await Promise.all([
-        fetchSheetRows('history', 'Transaksi'),
+        fetchSheetRows('history', 'Data'),
         fetchSheetRows('debtRows', 'Hutang'),
         fetchSheetRows('debtRows', 'Piutang'),
       ]);

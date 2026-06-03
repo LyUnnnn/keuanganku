@@ -31,13 +31,14 @@ async function fetchSheetRows(action, sheetName) {
 // Kirim satu item ke Google Sheets
 async function sendItemToSheets(item, db) {
   const formData = new URLSearchParams();
-  const requestedSheetName = item.sheetName || settings.sheetName || 'Transaksi';
+  const requestedSheetName = item.sheetName || settings.sheetName || 'Data';
+  const normalizedSheetName = requestedSheetName === 'Transaksi' ? 'Data' : requestedSheetName;
   const isDebtItem = item.recordType === 'hutang' || item.recordType === 'piutang';
   const sheetName = isDebtItem
     ? (item.sheetName || (item.recordType === 'piutang' ? 'Piutang' : 'Hutang'))
     : (requestedSheetName === 'Hutang' || requestedSheetName === 'Piutang'
-        ? 'Transaksi'
-        : requestedSheetName);
+        ? 'Data'
+        : normalizedSheetName);
   formData.append('sheetName', sheetName);
   if (isDebtItem) {
     [

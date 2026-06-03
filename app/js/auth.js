@@ -338,8 +338,8 @@ async function doLogin(mode, pin) {
           settings = { ...sRes.data };
           // Simpan cache lokal tanpa URL agar tidak mudah terlihat di browser
           localStorage.setItem('keuanganku_settings_cache', JSON.stringify({
-            sheetName: (settings.sheetName === 'Hutang' || settings.sheetName === 'Piutang' || !settings.sheetName)
-              ? 'Transaksi'
+            sheetName: (settings.sheetName === 'Hutang' || settings.sheetName === 'Piutang' || !settings.sheetName || settings.sheetName === 'Transaksi')
+              ? 'Data'
               : settings.sheetName,
           }));
         }
@@ -511,8 +511,8 @@ async function initAuth() {
       if (sRes.status === 'ok') {
         settings = { ...sRes.data };
         localStorage.setItem('keuanganku_settings_cache', JSON.stringify({
-          sheetName: (settings.sheetName === 'Hutang' || settings.sheetName === 'Piutang' || !settings.sheetName)
-            ? 'Transaksi'
+          sheetName: (settings.sheetName === 'Hutang' || settings.sheetName === 'Piutang' || !settings.sheetName || settings.sheetName === 'Transaksi')
+            ? 'Data'
             : settings.sheetName,
         }));
       }
@@ -523,8 +523,8 @@ async function initAuth() {
         const parsed = JSON.parse(cached);
         settings = { ...parsed };
         localStorage.setItem('keuanganku_settings_cache', JSON.stringify({
-          sheetName: (settings.sheetName === 'Hutang' || settings.sheetName === 'Piutang' || !settings.sheetName)
-            ? 'Transaksi'
+          sheetName: (settings.sheetName === 'Hutang' || settings.sheetName === 'Piutang' || !settings.sheetName || settings.sheetName === 'Transaksi')
+            ? 'Data'
             : settings.sheetName,
         }));
       } catch {}

@@ -3,7 +3,7 @@
 // Bergantung pada: ui.js (settings, toast, formatRp)
 //
 // PROTOKOL doGet yang diharapkan:
-//   GET ?action=saldo&sheetName=Transaksi
+//   GET ?action=saldo&sheetName=Data
 //   Response JSON: { status:'ok', data:{ masuk, keluar, saldo, txnCount, perSumber:[{nama,masuk,keluar,saldo,txn}] } }
 
 const SUMBER_EMOJI = {
@@ -21,7 +21,7 @@ async function fetchSaldoFromSheets() {
 
   const url = new URL(settings.scriptUrl);
   url.searchParams.set('action', 'saldo');
-  url.searchParams.set('sheetName', settings.sheetName || 'Transaksi');
+  url.searchParams.set('sheetName', settings.sheetName === 'Transaksi' ? 'Data' : (settings.sheetName || 'Data'));
 
   const res  = await fetch(url.toString(), { cache: 'no-store' });
   const json = await res.json();
@@ -40,7 +40,7 @@ function renderSaldoHero(data) {
   const saldo = data.saldo ?? 0;
   totalEl.textContent = formatRp(saldo);
   totalEl.className   = 'saldo-hero-amount' + (saldo >= 0 ? ' positive' : ' negative');
-  periodeEl.textContent = `${data.txnCount ?? 0} transaksi di sheet "${settings.sheetName || 'Transaksi'}"`;
+  periodeEl.textContent = `${data.txnCount ?? 0} transaksi di sheet "${settings.sheetName === 'Transaksi' ? 'Data' : (settings.sheetName || 'Data')}"`;
 }
 
 function renderSaldoSummary(data) {
@@ -58,7 +58,7 @@ function renderSaldoSummary(data) {
   txnEl.textContent         = data.txnCount ?? 0;
   masukCountEl.textContent  = `${data.masukCount  ?? '—'} transaksi`;
   keluarCountEl.textContent = `${data.keluarCount ?? '—'} transaksi`;
-  sheetEl.textContent       = settings.sheetName || 'Transaksi';
+  sheetEl.textContent       = settings.sheetName === 'Transaksi' ? 'Data' : (settings.sheetName || 'Data');
 }
 
 function renderSaldoPerSumber(perSumber) {
