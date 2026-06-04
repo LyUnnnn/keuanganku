@@ -66,10 +66,12 @@ function buildTransactionKey(item) {
     item.nominal ?? '',
     item.sumber || '',
     item.kelompok || '',
-    item.transferId || '',
-    item.transferLeg || '',
-    item.transferTarget || '',
   ].join('|');
+}
+
+function formatTimestampDisplay(date = new Date()) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
 function buildDebtKey(item) {
@@ -367,10 +369,7 @@ async function loadHistoryFromDB() { await loadData(); }
 function updateTimestamp() {
   const el = document.getElementById('timestamp-display');
   if (!el) return;
-  el.textContent = new Date().toLocaleString('id-ID', {
-    day:'2-digit', month:'2-digit', year:'numeric',
-    hour:'2-digit', minute:'2-digit', second:'2-digit',
-  });
+  el.textContent = formatTimestampDisplay(new Date());
 }
 function setTodayDate() {
   const el = document.getElementById('tanggal');
@@ -546,7 +545,7 @@ async function submitForm(e) {
   const data = {
     id:        Date.now(),
     recordType:'transaksi',
-    timestamp: document.getElementById('timestamp-display').textContent,
+    timestamp: document.getElementById('timestamp-display').textContent || formatTimestampDisplay(new Date()),
     tanggal:   document.getElementById('tanggal').value,
     deskripsi: document.getElementById('deskripsi').value.trim(),
     kategori:  selectedJenis === 'Netral' ? 'Transfer Antar Akun' : document.getElementById('kategori').value,
@@ -614,7 +613,7 @@ async function submitDebtForm(e) {
   const data = {
     id:        Date.now(),
     recordType:type === 'Hutang' ? 'hutang' : 'piutang',
-    timestamp: new Date().toLocaleString('id-ID'),
+    timestamp: formatTimestampDisplay(new Date()),
     tanggal:   document.getElementById('tanggal-utang').value,
     jatuhTempo: document.getElementById('jatuh-tempo').value,
     deskripsi: document.getElementById('deskripsi-utang').value.trim(),
