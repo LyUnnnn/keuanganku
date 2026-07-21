@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "version": "1.0",
+    "updatedAt": "2026-07-21"
+  },
+  "sources": [
+    { "value": "BCA", "label": "BCA", "active": true, "order": 1 }
+  ],
+  "transferTargets": [
+    { "value": "BCA", "label": "BCA", "active": true, "order": 1 }
+  ]
+}

@@ -319,6 +319,7 @@ function initApp() {
   loadSettings();
   checkStatus();
   loadHistoryFromDB();
+  loadInputOptions();
 }
 
 // ─── Database → UI ────────────────────────────────────────
@@ -393,7 +394,7 @@ const PANEL_TITLES = {
   settings: 'Pengaturan',
   about:    'Panduan',
 };
-const PANEL_ORDER = ['input', 'saldo', 'history', 'utang', 'settings', 'about'];
+const PANEL_ORDER = ['saldo', 'input', 'history', 'utang', 'settings', 'about'];
 
 function showPanel(name) {
   // User mode: block saldo panel
@@ -495,6 +496,39 @@ function selectJenis(val, el) {
     const kategoriEl = document.getElementById('kategori');
     if (kategoriEl) kategoriEl.required = true;
   }
+}
+
+async function loadInputOptions() {
+  const res = await fetch('/data/input-options.json');
+  const json = await res.json();
+
+  renderPills(
+    json.sources,
+    document.getElementById('sumber-grid'),
+    selectSumber
+  );
+
+  renderPills(
+    json.transferTargets, 
+    document.getElementById('tujuan-grid'), 
+    selectTujuan
+  );
+}
+
+function renderPills(items, container, onClick) {
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  items.forEach(item => {
+    const pill = document.createElement('div');
+    pill.className = 'sumber-pill';
+    if (onClick === selectTujuan) pill.classList.add('tujuan-pill');
+    pill.dataset.val = item.value;
+    pill.textContent = item.label;
+    pill.onclick = () => onClick(item.value, pill);
+    container.appendChild(pill);
+  });
 }
 
 function selectSumber(val, el) {

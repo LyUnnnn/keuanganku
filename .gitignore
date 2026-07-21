@@ -6,6 +6,7 @@ npm-debug.log
 .env
 
 # Database & Config lokal
+/app/data/input-options.json
 /data/
 /backend/data/
 config.json
