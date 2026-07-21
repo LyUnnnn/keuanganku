@@ -18,22 +18,7 @@ let sidebarVisible = true; // track desktop sidebar state
 
 let settings = {};
 let selectedDebtType = 'Hutang';
-
-const kelompokMap = {
-  'Gaji': 'Pemasukan', 'Pendapatan Usaha': 'Pemasukan',
-  'Pemberian': 'Pemasukan', 'Bunga & Investasi': 'Pemasukan',
-  'Makan & Minum': 'Pengeluaran Rutin', 'Transportasi': 'Pengeluaran Rutin',
-  'Utilitas': 'Pengeluaran Rutin', 'Tempat Tinggal': 'Pengeluaran Rutin',
-  'Cicilan / Hutang': 'Pengeluaran Rutin',
-  'Pengeluaran Variabel': 'Pengeluaran Variabel', 'Kesehatan': 'Pengeluaran Variabel',
-  'Kebersihan': 'Pengeluaran Variabel', 'Belanja': 'Pengeluaran Variabel',
-  'Kebutuhan Digital': 'Pengeluaran Variabel', 'Pendidikan': 'Pengeluaran Variabel',
-  'Sosial & Donasi': 'Pengeluaran Variabel', 'Biaya Admin & Pajak': 'Pengeluaran Variabel',
-  'Lain-lain': 'Pengeluaran Variabel',
-  'Transfer Antar Akun': 'Non-Pengeluaran', 'Piutang': 'Non-Pengeluaran',
-  'Investasi': 'Non-Pengeluaran', 'Penyesuaian Saldo': 'Non-Pengeluaran',
-  'Set Saldo': 'Non-Pengeluaran',
-};
+let categoryGroupMap = {};
 
 // ─── Utility ─────────────────────────────────────────────
 const formatRp = n => new Intl.NumberFormat('id-ID', {
@@ -72,6 +57,34 @@ function buildTransactionKey(item) {
 function formatTimestampDisplay(date = new Date()) {
   const pad = n => String(n).padStart(2, '0');
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+const INPUT_OPTIONS_CACHE_KEY = 'keuanganku_input_options_cache_v1';
+
+function getCachedInputOptions() {
+  try {
+    const raw = localStorage.getItem(INPUT_OPTIONS_CACHE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    return parsed;
+  } catch (err) {
+    console.warn('Cache input-options rusak:', err);
+    return null;
+  }
+}
+
+function saveCachedInputOptions(data) {
+  try {
+    localStorage.setItem(INPUT_OPTIONS_CACHE_KEY, JSON.stringify({
+      savedAt: new Date().toISOString(),
+      data,
+    }));
+  } catch (err) {
+    console.warn('Gagal simpan cache input-options:', err);
+  }
 }
 
 function buildDebtKey(item) {
@@ -498,21 +511,114 @@ function selectJenis(val, el) {
   }
 }
 
+function getDefaultInputOptions() {
+  return {
+    sources: [
+      { value: 'BCA', label: 'BCA' },
+      { value: 'Cash', label: 'Cash' },
+    ],
+    transferTargets: [
+      { value: 'BCA', label: 'BCA' },
+      { value: 'Cash', label: 'Cash' },
+    ],
+    categories: {
+      'Non-Pengeluaran': [
+        { value: 'Transfer Antar Akun', label: 'Transfer Antar Akun' },
+      ],
+    },
+  };
+}
+
 async function loadInputOptions() {
-  const res = await fetch('/data/input-options.json');
-  const json = await res.json();
+  const cached = getCachedInputOptions();
+  const fallback = getDefaultInputOptions();
+
+  if (cached?.data) {
+    renderInputOptions(cached.data);
+  } else {
+    renderInputOptions(fallback);
+  }
+
+  try {
+    const res = await fetch('/data/input-options.json', { cache: 'no-store' });
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const json = await res.json();
+
+    saveCachedInputOptions(json);
+    renderInputOptions(json);
+
+  } catch (err) {
+    console.warn('Gagal fetch input-options, pakai data fallback/cache:', err);
+  }
+}
+
+function renderInputOptions(json) {
+  if (!json) return;
+
+  renderCategories(
+    json.categories,
+    document.getElementById('kategori'),
+    document.getElementById('kelompok')
+  );
 
   renderPills(
-    json.sources,
+    json.sources || [],
     document.getElementById('sumber-grid'),
     selectSumber
   );
 
   renderPills(
-    json.transferTargets, 
-    document.getElementById('tujuan-grid'), 
+    json.transferTargets || [],
+    document.getElementById('tujuan-grid'),
     selectTujuan
   );
+}
+
+function renderCategories(items, container, groupEl) {
+  if (!container) return;
+
+  categoryGroupMap = {};
+  container.innerHTML = '';
+
+  if (groupEl) {
+    groupEl.innerHTML = '';
+    const defaultGroup = document.createElement('option');
+    defaultGroup.value = '';
+    defaultGroup.textContent = '— Otomatis terisi —';
+    groupEl.appendChild(defaultGroup);
+
+    Object.keys(items).forEach(groupName => {
+      const opt = document.createElement('option');
+      opt.value = groupName;
+      opt.textContent = groupName;
+      groupEl.appendChild(opt);
+    });
+  }
+
+  const defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = '— Pilih Kategori —';
+  container.appendChild(defaultOpt);
+
+  Object.entries(items).forEach(([groupName, groupItems]) => {
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = groupName;
+
+    groupItems.forEach(item => {
+      categoryGroupMap[item.value] = groupName;
+
+      const opt = document.createElement('option');
+      opt.value = item.value;
+      opt.textContent = item.label;
+      optgroup.appendChild(opt);
+    });
+
+    container.appendChild(optgroup);
+  });
 }
 
 function renderPills(items, container, onClick) {
@@ -547,7 +653,7 @@ function selectTujuan(val, el) {
 
 function updateKelompok(val) {
   const el = document.getElementById('kelompok');
-  if (el) el.value = kelompokMap[val] || '';
+  if (el) el.value = categoryGroupMap[val] || '';
 }
 
 function updateNominalDisplay(inp) {

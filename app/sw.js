@@ -1,5 +1,5 @@
 // ─── sw.js — Service Worker ───────────────────────────────
-const CACHE   = 'keuanganku-v10';
+const CACHE   = 'keuanganku-v11';
 const ASSETS  = [
   './',
   './index.html',
@@ -20,6 +20,7 @@ const ASSETS  = [
   './components/panel-utang.html',
   './components/panel-settings.html',
   './components/panel-about.html',
+  './data/input-options.json',
 ];
 
 self.addEventListener('install', e => {

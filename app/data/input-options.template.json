@@ -8,5 +8,19 @@
   ],
   "transferTargets": [
     { "value": "BCA", "label": "BCA", "active": true, "order": 1 }
-  ]
+  ],
+  "categories": {
+    "Pemasukan" : [
+      { "group": "Pemasukan", "value": "Gaji", "label": "Gaji", "active": true, "order": 1 }
+    ],
+    "Pengeluaran Rutin" : [
+      { "group": "Pengeluaran Rutin", "value": "Makan & Minum", "label": "Makan & Minum", "active": true, "order": 1 }
+    ],
+    "Pengeluaran Variabel" : [
+      { "group": "Pengeluaran Variabel", "value": "Pengeluaran Variabel", "label": "Pengeluaran Variabel", "active": true, "order": 1 }
+    ],
+    "Non-Pengeluaran" : [
+      { "group": "Non-Pengeluaran", "value": "Transfer Antar Akun", "label": "Transfer Antar Akun", "active": true, "order": 1 }
+    ]
+  }
 }
